@@ -11,6 +11,7 @@ class UserAccount(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
     is_pro = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -43,6 +44,13 @@ class PetScanResult(Base):
     image_url = Column(String)
 
 # Pydantic Schemas
+class UserRegister(BaseModel):
+    email: str
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 class PetScanResponse(BaseModel):
     id: uuid.UUID
     pet_id: uuid.UUID
@@ -50,6 +58,7 @@ class PetScanResponse(BaseModel):
     coat_health_score: float
     eye_clarity_score: float
     dental_plaque_score: float
+    raw_detections: str | None = None
     image_url: str
     message: str
 

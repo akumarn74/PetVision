@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'features/home_screen.dart';
+import 'features/auth_screen.dart';
+import 'core/api_client.dart';
 
 void main() {
   // Overarching Riverpod scope.
   runApp(const ProviderScope(child: PetVisionApp()));
 }
 
-class PetVisionApp extends StatelessWidget {
+class PetVisionApp extends ConsumerWidget {
   const PetVisionApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Watch the overarching token natively.
+    final token = ref.watch(authProvider);
+
     return MaterialApp(
       title: 'PetVision AI',
       debugShowCheckedModeBanner: false,
@@ -23,7 +28,8 @@ class PetVisionApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      // If token is null, block the application routing.
+      home: token == null ? const AuthScreen() : const HomeScreen(),
     );
   }
 }

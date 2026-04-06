@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from backend.api.router import router as api_router
 from backend.api.websockets import router as ws_router
+from backend.api.auth import router as auth_router
 from backend.db.session import engine, Base
 
 @asynccontextmanager
@@ -32,6 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(api_router, prefix="/api")
 app.include_router(ws_router)
 

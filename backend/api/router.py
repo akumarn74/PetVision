@@ -141,6 +141,13 @@ async def process_new_scan(
     
     await manager.broadcast_status(pet_id, "ingesting", {"message": "Uploading camera burst safely..."})
     try:
+        # Fetch Pet Profile to pass expected Identity Data to Vision Model
+        profile_query = select(PetProfile).where(PetProfile.id == pet_id)
+        profile_result = await db.execute(profile_query)
+        pet = profile_result.scalar_one_or_none()
+        expected_name = pet.name if pet else "Your pet"
+        expected_breed = pet.breed if pet else "Unknown pet"
+
         # 1. Read bytes for Inference
         file_bytes = await file.read()
         
@@ -149,7 +156,17 @@ async def process_new_scan(
         
         # 3. Process with GPT-4o Vision
         await manager.broadcast_status(pet_id, "processing", {"message": "Running Multi-Modal Vision AI Pipeline..."})
-        inference_results = await run_pet_inference(file_bytes)
+        inference_results = await run_pet_inference(file_bytes, expected_name, expected_breed)
+        
+        # 3B. ANTI-FRAUD GATING
+        detections = inference_results["detections"]
+        if detections.get("is_fraud", False):
+            fraud_reason = detections.get("fraud_reason", "The image does not appear to match the documented pet species or breed.")
+            await manager.broadcast_status(pet_id, "error", {"message": fraud_reason})
+            raise HTTPException(status_code=400, detail=f"IDENTITY MISMATCH: {fraud_reason}")
+            
+    except HTTPException:
+        raise
     except Exception as e:
         await manager.broadcast_status(pet_id, "error", {"message": str(e)})
         raise HTTPException(status_code=500, detail=f"Pipeline Error: {str(e)}")
@@ -180,6 +197,7 @@ async def process_new_scan(
         coat_health_score=new_scan.coat_health_score,
         eye_clarity_score=new_scan.eye_clarity_score,
         dental_plaque_score=new_scan.dental_plaque_score,
+        raw_detections=new_scan.raw_detections,
         image_url=image_url,
         message="Scan completed and saved successfully."
     )

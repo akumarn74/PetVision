@@ -34,6 +34,7 @@ class PetScanResult {
   final double coatHealthScore;
   final double eyeClarityScore;
   final double dentalPlaqueScore;
+  final String? rawDetections;
   final String imageUrl;
   final String timestamp;
 
@@ -44,6 +45,7 @@ class PetScanResult {
     required this.coatHealthScore,
     required this.eyeClarityScore,
     required this.dentalPlaqueScore,
+    this.rawDetections,
     required this.imageUrl,
     required this.timestamp,
   });
@@ -56,6 +58,7 @@ class PetScanResult {
       coatHealthScore: (json['coat_health_score'] ?? 0.0).toDouble(),
       eyeClarityScore: (json['eye_clarity_score'] ?? 0.0).toDouble(),
       dentalPlaqueScore: (json['dental_plaque_score'] ?? 0.0).toDouble(),
+      rawDetections: json['raw_detections'],
       imageUrl: json['image_url'] ?? '',
       timestamp: json['timestamp'] ?? '',
     );

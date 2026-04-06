@@ -13,7 +13,7 @@ except ImportError:
 
 LLM_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
-async def run_pet_inference(image_bytes: bytes) -> dict:
+async def run_pet_inference(image_bytes: bytes, expected_pet_name: str, expected_breed: str) -> dict:
     """
     Production Engine: Replaces local YOLO models with OpenAI's `gpt-4o` Vision model
     capable of running zero-shot diagnostic inference directly on the user's photo.
@@ -29,11 +29,18 @@ async def run_pet_inference(image_bytes: bytes) -> dict:
         
     system_prompt = (
         "You are 'PetVision AI', an elite veterinary AI diagnostic vision model. "
-        "Analyze this image of an animal and predict 4 biometric health identifiers on a strictly 0.0 to 100.0 scale. "
-        "Outputs must be in strict JSON format. No markdown, no prefixes, no wrapping code blocks. JUST the JSON dictionary. "
-        "Keys must be exactly: 'body_condition_score', 'coat_health_score', 'eye_clarity_score', 'dental_plaque_score', 'ai_reflection'. "
-        "DO NOT blindly default to 90 or 95. If an attribute is completely blocked from view, look at surrounding visual clues (breed, weight, aging) to generate a realistic estimation ranging anywhere from 40 to 95. "
-        "The 'ai_reflection' key MUST contain exactly 2 sentences describing the physical composition, colors, breed, and immediate biological state of the exact animal you are looking at right now."
+        f"You are evaluating a scan for a pet named '{expected_pet_name}' who is registered as a '{expected_breed}'. "
+        "Analyze this precise image of an animal and predict 4 biometric health identifiers. YOU MUST ENFORCE HIGH VARIANCE! Look at the specific dog/cat, evaluate flaws, and give hyper-specific scores ranging from 35.0 to 98.0! "
+        "CRITICAL IDENTITY CHECK: If the image is CLEARLY not a pet (e.g. a car, piece of furniture, human face), OR is very obviously a totally different species/breed than expected, set 'is_fraud' to true and explain why in 'fraud_reason'. Skip other metrics if fraud is detected. "
+        "CRITICAL INSTRUCTION: If any specific biological metric (like teeth or eyes) is completely obscured by the camera angle, YOU MUST NOT HALLUCINATE A SCORE! You must set the score to exactly -1.0, and state 'Metric fully obscured. Cannot be evaluated from this angle.' in the analysis string! "
+        "Outputs must be in strict JSON format. No markdown, no prefixes. JUST the JSON dictionary. "
+        "Your JSON MUST contain exactly these 11 keys: "
+        "'is_fraud' (boolean), 'fraud_reason' (string), "
+        "'body_condition_score' (float), 'body_condition_analysis' (3 to 5 dense, clinically intensive sentences describing skeletal alignment, fat deposits, and muscular distribution explicitly mapped from the photo), "
+        "'coat_health_score' (float), 'coat_health_analysis' (3 to 5 dense sentences evaluating pixel gloss matrices, shedding patterns, or hydration markers), "
+        "'eye_clarity_score' (float), 'eye_clarity_analysis' (3 to 5 dense sentences analyzing sub-cornea lens opacity, sclera redness, and tear duct formations), "
+        "'dental_plaque_score' (float), 'dental_plaque_analysis' (3 to 5 dense sentences scanning calculus boundary intersections or gumline inflammation), "
+        "and 'ai_reflection' (A massive paragraph summarizing the animal's breed, age proxy, biological composition, and overriding psychological state based on their posture)."
     )
     
     payload = {
@@ -92,7 +99,7 @@ async def run_pet_inference(image_bytes: bytes) -> dict:
                 raise ValueError(f"OpenAI Failed Json Decoding. Returned: {raw_text}")
             
             return {
-                "detections": [metrics_json.get("ai_reflection", "AI Diagnostic Complete.")],
+                "detections": metrics_json,
                 "metrics": {
                     "body_condition_score": float(metrics_json.get("body_condition_score", 85.0)),
                     "coat_health_score": float(metrics_json.get("coat_health_score", 88.0)),

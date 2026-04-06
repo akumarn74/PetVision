@@ -108,11 +108,39 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
       
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Inference Error: $e')));
+        String errorString = e.toString();
         setState(() {
           _isUploading = false;
           _currentAiStatus = "Capture Failed";
         });
+        
+        if (errorString.contains("IDENTITY MISMATCH")) {
+          // Extract the exact reason formulated by GPT-4o
+          String reason = errorString.split("IDENTITY MISMATCH:").last.trim();
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              title: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 32),
+                  const SizedBox(width: 12),
+                  Text("Verification Failed", style: GoogleFonts.plusJakartaSans(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 20)),
+                ],
+              ),
+              content: Text(reason, style: GoogleFonts.plusJakartaSans(color: Colors.grey[700], fontSize: 16, height: 1.5)),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text("TRY AGAIN", style: GoogleFonts.plusJakartaSans(color: Colors.blueAccent, fontWeight: FontWeight.w800)),
+                )
+              ],
+            )
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Inference Error: $errorString')));
+        }
       }
     } finally {
       _socketSubscription?.cancel();

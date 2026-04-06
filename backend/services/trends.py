@@ -1,8 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
-from backend.models.domain import PetScanResult
+from backend.models.domain import PetScanResult, PetProfile
 import uuid
 from datetime import datetime, timedelta
+from backend.services.llm import generate_temporal_delta_context
 
 async def calculate_30_day_trends(db: AsyncSession, pet_id: uuid.UUID) -> dict:
     """
@@ -54,6 +55,16 @@ async def calculate_30_day_trends(db: AsyncSession, pet_id: uuid.UUID) -> dict:
         "eye_clarity_delta_pct": calc_delta(latest_scan.eye_clarity_score, averages.avg_eye),
         "dental_plaque_delta_pct": calc_delta(latest_scan.dental_plaque_score, averages.avg_dental),
     }
+
+    # Fetch Pet Info for custom LLM context
+    profile_query = select(PetProfile).where(PetProfile.id == pet_id)
+    profile_result = await db.execute(profile_query)
+    pet = profile_result.scalar_one_or_none()
+    pet_name = pet.name if pet else "Your pet"
+    breed_info = f"Breed: {pet.breed if pet else 'Unknown'}, Weight: {pet.baseline_weight if pet else 'Unknown'} lbs"
+
+    # Query GPT-4o-mini to structurally synthesize exact physiological vectors specific to this math
+    llm_context = await generate_temporal_delta_context(pet_name, breed_info, trends)
     
     return {
         "status": "success",
@@ -65,6 +76,7 @@ async def calculate_30_day_trends(db: AsyncSession, pet_id: uuid.UUID) -> dict:
             "avg_dental": round(averages.avg_dental, 2) if averages.avg_dental else None,
         },
         "trends": trends,
+        "llm_context": llm_context,
         "insights": generate_text_insights(trends)
     }
 

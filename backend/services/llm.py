@@ -80,3 +80,51 @@ async def generate_vet_report_summary(pet_name: str, trends_dict: dict, recent_i
         logging.error(f"OpenAI Integrations Failure: {str(e)}")
         # Graceful degradation to fallback text if OpenAI is down or the key is invalid
         return f"Veterinary AI engine temporarily unavailable (Error: API Key validation failed or Network timeout). Please verify your OPENAI_API_KEY in the `.env` file."
+
+async def generate_temporal_delta_context(pet_name: str, build_profile_str: str, trends: dict) -> dict:
+    """
+    Passes mathematical delta percentages to GPT-4o-mini. Returns customized, highly dense
+    JSON strings replacing rigid dart fallbacks with actual LLM Trajectory analysis.
+    """
+    if not LLM_API_KEY or LLM_API_KEY.strip() == "":
+        return {} # Fails silently, Frontend natively falls back
+
+    system_prompt = (
+        "You are 'PetVision AI', an elite veterinary tracking model. "
+        "Analyze these 30-day percentage deltas and generate custom trajectory tracking analysis. "
+        "Return STRICT JSON with these exactly 8 keys: "
+        "'body_context', 'body_trajectory', 'coat_context', 'coat_trajectory', "
+        "'eye_context', 'eye_trajectory', 'dental_context', 'dental_trajectory'. "
+        "Contexts should be 1-2 dense sentences explaining the biological tracking metric itself. "
+        "Trajectories should be 2-3 dense sentences explaining what the specific math (+2.4%, -1.1%) means clinically for this exact pet!"
+    )
+
+    user_prompt = f"Patient: {pet_name} - {build_profile_str}\n\n"
+    user_prompt += f"Systemic Body Condition: {trends.get('body_condition_delta_pct', 0)}% moving average change\n"
+    user_prompt += f"External Coat Health: {trends.get('coat_health_delta_pct', 0)}% moving average change\n"
+    user_prompt += f"Ocular Clarity: {trends.get('eye_clarity_delta_pct', 0)}% moving average change\n"
+    user_prompt += f"Dental Plaque: {trends.get('dental_plaque_delta_pct', 0)}% moving average change\n"
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {LLM_API_KEY}", "Content-Type": "application/json"},
+                json={
+                    "model": "gpt-4o-mini",
+                    "response_format": {"type": "json_object"},
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    "temperature": 0.4,
+                    "max_tokens": 500
+                }
+            )
+            response.raise_for_status()
+            import json
+            data = response.json()
+            return json.loads(data["choices"][0]["message"]["content"])
+    except Exception as e:
+        logging.error(f"OpenAI Temporal AI Failure: {str(e)}")
+        return {}

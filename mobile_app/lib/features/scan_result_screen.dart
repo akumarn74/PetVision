@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../domain/models.dart';
@@ -47,118 +48,21 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
   }
 
   String _getInsight(String metric, double score) {
-    if (metric == "Body Condition") {
-      if (score > 85) return 'Ideal muscle-to-fat alignment. Ribs are palpable but not visible.';
-      if (score > 65) return 'Slightly misaligned weight class. Recommend diet review quickly.';
-      return 'Severe weight anomaly. Consult vet for obesity or malnourishment markers.';
-    } else if (metric == "Coat Health") {
-      if (score > 85) return 'Sleek, glossy coat indicating excellent systematic nutrition.';
-      if (score > 65) return 'Slight matting or dryness detected in fur clusters.';
-      return 'Severe shedding, bald spots, or parasitic markers detected.';
-    } else if (metric == "Eye Clarity") {
-      if (score > 85) return 'Zero lens opacity or tearing. Extremely healthy optics.';
-      if (score > 65) return 'Mild discharge or redness around the sclera detected.';
-      return 'High opacity/cataract risk. Veterinary ocular assessment required.';
-    } else if (metric == "Dental Plaque") {
-      if (score > 85) return 'Minimal tartar buildup across visible periodontal boundaries.';
-      if (score > 65) return 'Moderate yellowing detected. Regular brushing advised.';
-      return 'Severe plaque accumulation. Scaling and polishing strongly recommended.';
+    Map<String, dynamic> rawJson = {};
+    if (widget.result.rawDetections != null) {
+      try {
+         rawJson = json.decode(widget.result.rawDetections!);
+      } catch(e) {}
     }
+    
+    if (metric == "Body Condition") return rawJson["body_condition_analysis"] ?? "Status Pending: AI data unavailable for this vector.";
+    if (metric == "Coat Health") return rawJson["coat_health_analysis"] ?? "Status Pending: AI data unavailable for this vector.";
+    if (metric == "Eye Clarity") return rawJson["eye_clarity_analysis"] ?? "Status Pending: AI data unavailable for this vector.";
+    if (metric == "Dental Plaque") return rawJson["dental_plaque_analysis"] ?? "Status Pending: AI data unavailable for this vector.";
     return '';
   }
 
-  void _showEducationalModal(String metric, double score, Color color, IconData icon) {
-    String meaning = "";
-    String tip = "";
-    if (metric == "Body Condition") {
-      meaning = "Body Condition is a strictly algorithmic measurement comparing your pet's visible muscular mass against their skeletal framework. This helps determine if they are structurally absorbing nutrients correctly.";
-      tip = "Maintain a high-protein diet and ensure at least 30 minutes of aerobic exercise daily.";
-    } else if (metric == "Coat Health") {
-      meaning = "The AI analyzes pixel-level light reflection gradients and texture distributions. A dull coat often points to hidden systematic dehydration or omega-3 deficiencies.";
-      tip = "Supplement with fish oil and brush daily to distribute natural dermal oils.";
-    } else if (metric == "Eye Clarity") {
-      meaning = "We scan the cornea and sclera for asymmetrical reflections, which are early predictors of cataracts, glaucoma, or underlying hypertension leaks.";
-      tip = "Wipe tear stains organically and keep away from high-dust environments.";
-    } else if (metric == "Dental Plaque") {
-      meaning = "Our vision edge-detection isolates the tartar boundary between the enamel and gumline. Dental disease is directly correlated to fatal heart conditions in aging pets.";
-      tip = "Use an enzymatic toothpaste 3x a week, and offer veterinary compressed chewables.";
-    }
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        return Container(
-          padding: const EdgeInsets.all(32),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.only(topLeft: Radius.circular(40), topRight: Radius.circular(40)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
-                    child: Icon(icon, color: color, size: 28),
-                  ),
-                  const SizedBox(width: 16),
-                  Text("$metric Context", style: GoogleFonts.plusJakartaSans(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.black)),
-                ],
-              ),
-              const SizedBox(height: 24),
-              // What the AI is doing
-              Text("How the AI scored this: ${score.toStringAsFixed(1)} / 100", style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
-              const SizedBox(height: 16),
-              Text(meaning, style: GoogleFonts.plusJakartaSans(fontSize: 15, height: 1.6, color: Colors.grey[800])),
-              
-              const SizedBox(height: 32),
-              // Doctor Tip
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(color: Colors.blueAccent.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.2))),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.lightbulb, color: Colors.amber),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("Recommended Action", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.black87)),
-                          const SizedBox(height: 4),
-                          Text(tip, style: GoogleFonts.plusJakartaSans(color: Colors.grey[700], height: 1.5, fontSize: 13)),
-                        ],
-                      )
-                    )
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-              
-              // Close button
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28))),
-                  onPressed: () => Navigator.pop(ctx),
-                  child: Text("Understood", style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold)),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ]
-          )
-        );
-      }
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -200,24 +104,19 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
                   _buildLLMInsightsBox(),
                   
                   const SizedBox(height: 48),
-                  Text("GPT-4o Vision Extracted Metrics", style: GoogleFonts.plusJakartaSans(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text("Tap on any tile to learn how the AI calculated it.", style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.grey[500])),
+                  Text("AI Diagnostic Breakdown", style: GoogleFonts.plusJakartaSans(fontSize: 22, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   
-                  // Bento Box 2x2 Grid
-                  Row(
+                  // Vertical Feed of Metrics
+                  Column(
                     children: [
-                      Expanded(child: _buildBentoCard("Body Condition", widget.result.bodyConditionScore, Colors.blueAccent, Icons.monitor_weight_outlined)),
-                      const SizedBox(width: 16),
-                      Expanded(child: _buildBentoCard("Coat Health", widget.result.coatHealthScore, Colors.orangeAccent, Icons.pets_outlined)),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(child: _buildBentoCard("Eye Clarity", widget.result.eyeClarityScore, Colors.tealAccent.shade400, Icons.remove_red_eye_outlined)),
-                      const SizedBox(width: 16),
-                      Expanded(child: _buildBentoCard("Dental Plaque", widget.result.dentalPlaqueScore, Colors.redAccent, Icons.medical_services_outlined)),
+                      _buildDetailCard("Body Condition", widget.result.bodyConditionScore, Colors.blueAccent, Icons.monitor_weight_outlined),
+                      const SizedBox(height: 16),
+                      _buildDetailCard("Coat Health", widget.result.coatHealthScore, Colors.orangeAccent, Icons.pets_outlined),
+                      const SizedBox(height: 16),
+                      _buildDetailCard("Eye Clarity", widget.result.eyeClarityScore, Colors.tealAccent.shade400, Icons.remove_red_eye_outlined),
+                      const SizedBox(height: 16),
+                      _buildDetailCard("Dental Plaque", widget.result.dentalPlaqueScore, Colors.redAccent, Icons.medical_services_outlined),
                     ],
                   ),
 
@@ -334,43 +233,129 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
     );
   }
 
-  Widget _buildBentoCard(String title, double score, Color color, IconData icon) {
-    return Material(
-      color: Colors.white,
-      shadowColor: Colors.black12,
-      elevation: 2,
-      borderRadius: BorderRadius.circular(28),
-      child: InkWell(
-        onTap: () => _showEducationalModal(title, score, color, icon),
-        borderRadius: BorderRadius.circular(28),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: const Color(0xFFF1F5F9), width: 2),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildDetailCard(String title, double score, Color color, IconData icon) {
+    // Generate an illustrative background gradient based on the color schema
+    final Color lightGradient = color.withValues(alpha: 0.05);
+    final Color medGradient = color.withValues(alpha: 0.15);
+    
+    IconData dynamicHealthIcon = Icons.health_and_safety;
+    bool isMissing = score < 0.0;
+    
+    if (isMissing) {
+      dynamicHealthIcon = Icons.visibility_off;
+    } else if (score > 85) {
+      dynamicHealthIcon = Icons.star_rounded;
+    } else if (score > 65) {
+      dynamicHealthIcon = Icons.warning_rounded;
+    } else {
+      dynamicHealthIcon = Icons.dangerous_rounded;
+    }
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10))
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: Stack(
+          children: [
+            // Abstract decorative backgrounds
+            Positioned(
+              right: -30,
+              top: -30,
+              child: Container(
+                width: 120, height: 120,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: lightGradient),
+              )
+            ),
+            Positioned(
+              left: -20,
+              bottom: -20,
+              child: Container(
+                width: 80, height: 80,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: medGradient),
+              )
+            ),
+            // Core Interface Layout
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
-                    child: Icon(icon, color: color, size: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.05)]),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: color.withValues(alpha: 0.5)),
+                            ),
+                            child: Icon(icon, color: color, size: 28),
+                          ),
+                          const SizedBox(width: 16),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                              const SizedBox(height: 4),
+                              Text("AI Extracted Metric", style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w600)),
+                            ],
+                          )
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isMissing ? Colors.grey.shade200 : (score > 85 ? Colors.greenAccent.withValues(alpha: 0.15) : (score > 65 ? Colors.orangeAccent.withValues(alpha: 0.15) : Colors.redAccent.withValues(alpha: 0.15))),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: isMissing ? Colors.grey.shade400 : (score > 85 ? Colors.green : (score > 65 ? Colors.orange : Colors.red)), width: 1)
+                        ),
+                        child: Row(
+                          children: [
+                            Text(isMissing ? "N/A" : score.toStringAsFixed(1), style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w900, color: isMissing ? Colors.grey.shade700 : (score > 85 ? Colors.green.shade700 : (score > 65 ? Colors.orange.shade700 : Colors.red.shade700)))),
+                            const SizedBox(width: 4),
+                            Icon(dynamicHealthIcon, color: isMissing ? Colors.grey.shade700 : (score > 85 ? Colors.green.shade700 : (score > 65 ? Colors.orange.shade700 : Colors.red.shade700)), size: 16)
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(score.toStringAsFixed(0), style: GoogleFonts.plusJakartaSans(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.black)),
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFF1F5F9)),
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))]
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.psychology_alt, color: color, size: 24),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Text(_getInsight(title, score), style: GoogleFonts.plusJakartaSans(fontSize: 15, color: Colors.grey[800], height: 1.6, fontWeight: FontWeight.w500)),
+                        )
+                      ],
+                    )
+                  ),
                 ],
               ),
-              const SizedBox(height: 16),
-              Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey[800])),
-              const SizedBox(height: 8),
-              Text(_getInsight(title, score), style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey[500], height: 1.3)),
-            ],
-          ),
+            ),
+          ],
         ),
-      ),
+      )
     );
   }
 }

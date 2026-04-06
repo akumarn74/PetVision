@@ -33,10 +33,16 @@ class HomeScreen extends ConsumerWidget {
                       Text('Your Pets', style: GoogleFonts.plusJakartaSans(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.black, letterSpacing: -1)),
                     ],
                   ),
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: Colors.black,
-                    child: const Icon(Icons.person, color: Colors.white),
+                  InkWell(
+                    onTap: () {
+                      ref.read(authProvider.notifier).logout();
+                    },
+                    borderRadius: BorderRadius.circular(24),
+                    child: const CircleAvatar(
+                      radius: 24,
+                      backgroundColor: Colors.black,
+                      child: Icon(Icons.logout, color: Colors.white, size: 20),
+                    ),
                   )
                 ],
               ),

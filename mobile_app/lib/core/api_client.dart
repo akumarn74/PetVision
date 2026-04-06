@@ -3,15 +3,41 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:camera/camera.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/models.dart';
 
-// Riverpod Provider mapping the overarching backend instance universally!
+// Riverpod Provider for Authentication State!
+class AuthNotifier extends StateNotifier<String?> {
+  AuthNotifier() : super(null) {
+    _loadToken();
+  }
+
+  Future<void> _loadToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getString('jwt_token');
+  }
+
+  Future<void> setToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('jwt_token', token);
+    state = token;
+  }
+  
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('jwt_token');
+    state = null;
+  }
+}
+
+final authProvider = StateNotifierProvider<AuthNotifier, String?>((ref) => AuthNotifier());
+
+// API Client Provider dynamically binds to Auth Token!
 final apiClientProvider = Provider<ApiClient>((ref) {
-  return ApiClient(baseUrl: 'http://localhost:8000'); 
-  // TODO: Use 10.0.2.2 for Android emulators instead of localhost later.
+  final token = ref.watch(authProvider);
+  return ApiClient(baseUrl: 'http://localhost:8000', authToken: token); 
 });
 
-// 1. Defining the Riverpod FutureProvider caching our API requests async safely globally.
 final petsListProvider = FutureProvider<List<PetProfile>>((ref) async {
   final client = ref.watch(apiClientProvider);
   return await client.getPets();
@@ -19,21 +45,49 @@ final petsListProvider = FutureProvider<List<PetProfile>>((ref) async {
 
 class ApiClient {
   final String baseUrl;
-  // A mock JWT Token - realistically provided by FirebaseAuth.instance.currentUser?.getIdToken()
-  final String _mockAuthToken = "mock_firebase_signed_in_jwt_token";
+  final String? authToken;
 
-  ApiClient({required this.baseUrl});
+  ApiClient({required this.baseUrl, this.authToken});
 
   Map<String, String> get _headers => {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer $_mockAuthToken',
+        if (authToken != null) 'Authorization': 'Bearer $authToken',
       };
+
+  // ===============
+  // AUTH ENDPOINTS
+  // ===============
+
+  Future<String> register(String email, String password) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/auth/register'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({"email": email, "password": password})
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body)['access_token'];
+    }
+    throw Exception(json.decode(response.body)['detail'] ?? 'Registration Failed');
+  }
+
+  Future<String> login(String email, String password) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/auth/login'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({"email": email, "password": password})
+    );
+    if (response.statusCode == 200) {
+      return json.decode(response.body)['access_token'];
+    }
+    throw Exception(json.decode(response.body)['detail'] ?? 'Login Failed');
+  }
 
   // ===============
   // REST ENDPOINTS
   // ===============
   
   Future<List<PetProfile>> getPets() async {
+    if (authToken == null) return []; // Auto-block unauthenticated requests natively
     final response = await http.get(Uri.parse('$baseUrl/api/pets'), headers: _headers);
     if (response.statusCode == 200) {
       final List data = json.decode(response.body);
@@ -65,10 +119,9 @@ class ApiClient {
   Future<PetScanResult> uploadScan(String petId, XFile file) async {
     final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/api/scans/$petId'))
       ..headers.addAll({
-        'Authorization': 'Bearer $_mockAuthToken',
+        if (authToken != null) 'Authorization': 'Bearer $authToken',
       });
       
-    // Because Flutter Web might provide empty paths, we rely on readAsBytes safely natively out of cross_file.
     final bytes = await file.readAsBytes();
     final multipartFile = http.MultipartFile.fromBytes(
       'file', 
@@ -109,12 +162,7 @@ class ApiClient {
     throw Exception('Failed to fetch Vet PDF summary');
   }
 
-  // ==============
-  // WEBSOCKETS
-  // ==============
-
   Stream<BackendStatusMessage> connectToInferenceStream() {
-    // Note: WebSockets require entirely distinct routing scheme (ws:// vs http://)
     final wsUrl = baseUrl.replaceFirst('http', 'ws');
     final channel = WebSocketChannel.connect(Uri.parse('$wsUrl/ws/scans'));
     
