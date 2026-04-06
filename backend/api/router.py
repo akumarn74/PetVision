@@ -1,7 +1,7 @@
 from fastapi import APIRouter, File, UploadFile, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.db.session import get_db
-from backend.models.domain import PetScanResponse, PetScanResult, PetProfile
+from backend.models.domain import PetScanResponse, PetScanResult, PetProfile, PetProfileResponse
 from backend.services.inference import run_pet_inference
 from backend.services.storage import upload_file_to_s3
 from backend.services.trends import calculate_30_day_trends
@@ -147,9 +147,9 @@ async def process_new_scan(
         # 2. Upload file to MinIO storage asynchronously
         image_url = await upload_file_to_s3(file, pet_id)
         
-        # 3. Process with YOLOv8 & specific classifiers (mock)
-        await manager.broadcast_status(pet_id, "processing", {"message": "Running YOLOv8 inference pipeline."})
-        inference_results = run_pet_inference(file_bytes)
+        # 3. Process with GPT-4o Vision
+        await manager.broadcast_status(pet_id, "processing", {"message": "Running Multi-Modal Vision AI Pipeline..."})
+        inference_results = await run_pet_inference(file_bytes)
     except Exception as e:
         await manager.broadcast_status(pet_id, "error", {"message": str(e)})
         raise HTTPException(status_code=500, detail=f"Pipeline Error: {str(e)}")

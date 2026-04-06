@@ -14,11 +14,22 @@ async def lifespan(app: FastAPI):
     # Cleanup actions
     print("Shutting down...")
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(
     title="PetVision AI",
     description="Backend for the PetVision AI Mobile App",
     version="0.1.0",
     lifespan=lifespan
+)
+
+# Enable CORS specifically so Flutter Web (Chrome) running on random local ports can fetch data seamlessly!
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Adjust this in production, but wildcard is vital for local Flutter Chrome!
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(api_router, prefix="/api")

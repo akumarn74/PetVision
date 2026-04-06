@@ -6,7 +6,7 @@ from datetime import datetime
 import calendar
 
 # Standard limits (would be fetched from Stripe or DB configs)
-FREE_TIER_SCAN_LIMIT = 3
+FREE_TIER_SCAN_LIMIT = 10000 # Unlimited for Beta Developer Testing
 
 async def check_monthly_scan_quota(db: AsyncSession, user: UserAccount) -> bool:
     """
