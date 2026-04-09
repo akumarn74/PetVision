@@ -5,6 +5,9 @@ class PetProfile {
   final String breed;
   final int ageMonths;
   final double baselineWeight;
+  final String activityLevel;
+  final String dietGoal;
+  final double? targetCalories;
 
   PetProfile({
     required this.id,
@@ -13,6 +16,9 @@ class PetProfile {
     required this.breed,
     required this.ageMonths,
     required this.baselineWeight,
+    this.activityLevel = 'moderate',
+    this.dietGoal = 'maintain',
+    this.targetCalories,
   });
 
   factory PetProfile.fromJson(Map<String, dynamic> json) {
@@ -23,6 +29,9 @@ class PetProfile {
       breed: json['breed'] ?? '',
       ageMonths: json['age_months'] ?? 0,
       baselineWeight: (json['baseline_weight'] ?? 0.0).toDouble(),
+      activityLevel: json['activity_level'] ?? 'moderate',
+      dietGoal: json['diet_goal'] ?? 'maintain',
+      targetCalories: json['target_calories'] != null ? (json['target_calories']).toDouble() : null,
     );
   }
 }

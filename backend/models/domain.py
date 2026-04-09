@@ -24,6 +24,12 @@ class PetProfile(Base):
     breed = Column(String)
     age_months = Column(Integer)
     baseline_weight = Column(Float)
+    
+    # Cal AI Nutrition Tracking
+    activity_level = Column(String, default="moderate") # couch_potato, moderate, active
+    diet_goal = Column(String, default="maintain") # lose_weight, maintain, gain_weight
+    target_calories = Column(Float, nullable=True)
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class PetScanResult(Base):
@@ -42,6 +48,20 @@ class PetScanResult(Base):
     # Raw JSON detections (bounding boxes, confidence)
     raw_detections = Column(Text)
     image_url = Column(String)
+
+class DietEntry(Base):
+    __tablename__ = "diet_entries"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pet_id = Column(UUID(as_uuid=True), ForeignKey("pet_profiles.id"))
+    timestamp = Column(DateTime, default=datetime.utcnow, index=True)
+    
+    # Nutrition Data parsed by Cal AI Engine
+    food_name = Column(String)
+    calories = Column(Float)
+    proteins_g = Column(Float)
+    fats_g = Column(Float)
+    raw_query = Column(String) # the natural language string they typed
 
 # Pydantic Schemas
 class UserRegister(BaseModel):
@@ -65,6 +85,19 @@ class PetScanResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class DietEntryResponse(BaseModel):
+    id: uuid.UUID
+    pet_id: uuid.UUID
+    timestamp: datetime
+    food_name: str
+    calories: float
+    proteins_g: float
+    fats_g: float
+    raw_query: str
+    
+    class Config:
+        from_attributes = True
+
 class PetProfileResponse(BaseModel):
     id: uuid.UUID
     owner_id: uuid.UUID | None
@@ -72,6 +105,9 @@ class PetProfileResponse(BaseModel):
     breed: str
     age_months: int
     baseline_weight: float
+    activity_level: str
+    diet_goal: str
+    target_calories: float | None = None
     
     class Config:
         from_attributes = True

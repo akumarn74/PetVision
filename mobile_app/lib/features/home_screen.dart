@@ -6,6 +6,8 @@ import '../domain/models.dart';
 import 'add_pet_screen.dart';
 import 'camera_screen.dart';
 import 'timeline_screen.dart';
+import 'nutrition_screen.dart';
+import 'nutrition_onboarding_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -151,26 +153,59 @@ class ModernPetCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 24),
-            // Scanner Action Button
-            InkWell(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CameraScreen(pet: pet))),
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF), // Soft premium blue
-                  borderRadius: BorderRadius.circular(20),
+            // Dual Action Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      if (pet.targetCalories == null) {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => NutritionOnboardingScreen(pet: pet)));
+                      } else {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => NutritionScreen(pet: pet)));
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4), // Soft green
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.restaurant_menu_rounded, color: Color(0xFF16A34A), size: 18),
+                          const SizedBox(width: 8),
+                          Text("LOG DIET", style: GoogleFonts.plusJakartaSans(color: const Color(0xFF16A34A), fontWeight: FontWeight.w800, letterSpacing: 1.0, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.camera_alt_rounded, color: Color(0xFF2563EB), size: 20),
-                    const SizedBox(width: 8),
-                    Text("START SCAN", style: GoogleFonts.plusJakartaSans(color: const Color(0xFF2563EB), fontWeight: FontWeight.w800, letterSpacing: 1.0, fontSize: 14)),
-                  ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CameraScreen(pet: pet))),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF), // Soft premium blue
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.camera_alt_rounded, color: Color(0xFF2563EB), size: 18),
+                          const SizedBox(width: 8),
+                          Text("START SCAN", style: GoogleFonts.plusJakartaSans(color: const Color(0xFF2563EB), fontWeight: FontWeight.w800, letterSpacing: 1.0, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             )
           ],
         ),

@@ -162,6 +162,41 @@ class ApiClient {
     throw Exception('Failed to fetch Vet PDF summary');
   }
 
+  Future<void> logDietMeal(String petId, String foodDescription) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/nutrition/log/$petId'),
+      headers: _headers,
+      body: json.encode({"raw_text": foodDescription}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to log nutrition: ${response.body}');
+    }
+  }
+
+  Future<Map<String, dynamic>> getDietRecommendation(String petId) async {
+    final response = await http.get(Uri.parse('$baseUrl/api/nutrition/recommendation/$petId'), headers: _headers);
+    if (response.statusCode == 200) return json.decode(response.body);
+    throw Exception('Failed to pull Cal AI tracking hook');
+  }
+
+  Future<void> setupPetDiet(String petId, String activityLevel, String dietGoal) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/nutrition/setup/$petId'),
+      headers: _headers,
+      body: json.encode({"activity_level": activityLevel, "diet_goal": dietGoal}),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to setup diet');
+  }
+
+  Future<void> logDietImage(String petId, String base64Image) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/nutrition/log_image/$petId'),
+      headers: _headers,
+      body: json.encode({"image_base64": base64Image}),
+    );
+    if (response.statusCode != 200) throw Exception('Failed to invoke Vision Nutrition Engine');
+  }
+
   Stream<BackendStatusMessage> connectToInferenceStream() {
     final wsUrl = baseUrl.replaceFirst('http', 'ws');
     final channel = WebSocketChannel.connect(Uri.parse('$wsUrl/ws/scans'));

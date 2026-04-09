@@ -1,11 +1,12 @@
 from fastapi import APIRouter, File, UploadFile, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.db.session import get_db
-from backend.models.domain import PetScanResponse, PetScanResult, PetProfile, PetProfileResponse
+from backend.models.domain import PetScanResponse, PetScanResult, PetProfile, PetProfileResponse, DietEntry, DietEntryResponse
 from backend.services.inference import run_pet_inference
 from backend.services.storage import upload_file_to_s3
 from backend.services.trends import calculate_30_day_trends
 from backend.services.llm import generate_vet_report_summary
+from backend.services.diet import parse_unstructured_meal_to_json, generate_dietary_recommendation, calculate_target_calories, parse_food_image_to_json
 from backend.api.websockets import manager
 from backend.services.auth import get_current_user
 from backend.services.billing import check_monthly_scan_quota
@@ -237,3 +238,133 @@ async def get_vet_ready_report(
     
     return {"vet_report": summary, "pet_id": pet_id}
 
+
+class DietLogRequest(BaseModel):
+    raw_text: str
+
+@router.post("/nutrition/log/{pet_id}", response_model=DietEntryResponse)
+async def log_pet_meal(
+    pet_id: uuid.UUID,
+    data: DietLogRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user)
+):
+    await verify_pet_ownership(pet_id, current_user.id, db)
+    
+    # 1. Fetch Profile
+    profile_query = select(PetProfile).where(PetProfile.id == pet_id)
+    profile = (await db.execute(profile_query)).scalar_one_or_none()
+    
+    # 2. Rip NLP context to JSON
+    macros = await parse_unstructured_meal_to_json(data.raw_text, profile.name, profile.breed, profile.baseline_weight)
+    
+    # 3. Save
+    entry = DietEntry(
+        pet_id=pet_id,
+        food_name=macros["food_name"],
+        calories=macros["calories"],
+        proteins_g=macros["proteins_g"],
+        fats_g=macros["fats_g"],
+        raw_query=data.raw_text
+    )
+    db.add(entry)
+    await db.commit()
+    await db.refresh(entry)
+    
+    return entry
+
+from datetime import datetime, time
+
+@router.get("/nutrition/recommendation/{pet_id}")
+async def get_dietary_recommendation(
+    pet_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user)
+):
+    await verify_pet_ownership(pet_id, current_user.id, db)
+    
+    # Get profile
+    profile = (await db.execute(select(PetProfile).where(PetProfile.id == pet_id))).scalar_one_or_none()
+    
+    # Get latest Body Condition CV Score
+    latest_scan_query = select(PetScanResult).where(PetScanResult.pet_id == pet_id).order_by(PetScanResult.timestamp.desc()).limit(1)
+    scan = (await db.execute(latest_scan_query)).scalar_one_or_none()
+    bcs = scan.body_condition_score if scan else 50.0
+
+    # Calculate today's caloric intake via DB
+    today_start = datetime.combine(datetime.utcnow().date(), time.min)
+    meals_query = select(DietEntry).where(DietEntry.pet_id == pet_id, DietEntry.timestamp >= today_start)
+    meals = (await db.execute(meals_query)).scalars().all()
+    today_kcal = sum([m.calories for m in meals])
+    
+    # Query AI
+    recommendation = await generate_dietary_recommendation(
+        profile.name, profile.breed, profile.baseline_weight, bcs, today_kcal
+    )
+    
+    return {
+        "today_calories": today_kcal,
+        "target_calories": profile.target_calories if profile.target_calories else 1000.0,
+        "meals_logged": len(meals),
+        "ai_recommendation": recommendation,
+        "recent_meals": [{"id": str(m.id), "food_name": m.food_name, "calories": m.calories} for m in meals]
+    }
+
+class SetupDietRequest(BaseModel):
+    activity_level: str
+    diet_goal: str
+
+@router.post("/nutrition/setup/{pet_id}")
+async def setup_pet_diet(
+    pet_id: uuid.UUID,
+    data: SetupDietRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user)
+):
+    await verify_pet_ownership(pet_id, current_user.id, db)
+    
+    profile = (await db.execute(select(PetProfile).where(PetProfile.id == pet_id))).scalar_one_or_none()
+    profile.activity_level = data.activity_level
+    profile.diet_goal = data.diet_goal
+    
+    # Calculate their new limit
+    target = await calculate_target_calories(
+        profile.name, profile.breed, profile.baseline_weight, profile.age_months,
+        profile.activity_level, profile.diet_goal
+    )
+    profile.target_calories = target
+    
+    await db.commit()
+    return {"target_calories": target}
+
+class DietImageLogRequest(BaseModel):
+    image_base64: str
+
+@router.post("/nutrition/log_image/{pet_id}", response_model=DietEntryResponse)
+async def log_pet_meal_image(
+    pet_id: uuid.UUID,
+    data: DietImageLogRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user)
+):
+    await verify_pet_ownership(pet_id, current_user.id, db)
+    profile = (await db.execute(select(PetProfile).where(PetProfile.id == pet_id))).scalar_one_or_none()
+    
+    # GPT-4o Vision Pipeline
+    macros = await parse_food_image_to_json(
+        data.image_base64, profile.name, profile.breed, profile.baseline_weight, profile.diet_goal
+    )
+    
+    entry = DietEntry(
+        pet_id=pet_id,
+        food_name=macros["food_name"],
+        calories=macros["calories"],
+        proteins_g=macros["proteins_g"],
+        fats_g=macros["fats_g"],
+        raw_query="[IMAGE SCAN]"
+    )
+    db.add(entry)
+    await db.commit()
+    await db.refresh(entry)
+    
+    return entry

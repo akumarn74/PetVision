@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../domain/models.dart';
 import '../core/api_client.dart';
+import 'camera_screen.dart';
 
 class TimelineScreen extends ConsumerStatefulWidget {
   final PetProfile pet;
@@ -32,6 +33,12 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
         backgroundColor: const Color(0xFFF9FAFB),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CameraScreen(pet: widget.pet))),
+        backgroundColor: Colors.black,
+        icon: const Icon(Icons.camera_alt_rounded, color: Colors.white),
+        label: Text("NEW SCAN", style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _trendsFuture,
@@ -92,7 +99,41 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                         ],
                       ),
                       
-                      const SizedBox(height: 64),
+                      const SizedBox(height: 32),
+                      
+                      // GENERATE VET REPORT CTA
+                      InkWell(
+                        onTap: () async {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (ctx) => _buildVetReportModal(ctx)
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(24),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.2), width: 2)
+                          ),
+                          child: Center(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.medical_information_rounded, color: Colors.blueAccent),
+                                const SizedBox(width: 12),
+                                Text("EXPORT VET REPORT", style: GoogleFonts.plusJakartaSans(color: Colors.blueAccent, fontWeight: FontWeight.w900, fontSize: 16)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 120), // buffer for FAB
                     ],
                   ),
                 ),
@@ -292,6 +333,60 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVetReportModal(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(topLeft: Radius.circular(32), topRight: Radius.circular(32))
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Vet Context Report", style: GoogleFonts.plusJakartaSans(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -0.5)),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context))
+              ],
+            ),
+            const SizedBox(height: 16),
+            FutureBuilder<String>(
+              future: ref.read(apiClientProvider).getVetReport(widget.pet.id),
+              builder: (ctx, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: CircularProgressIndicator(color: Colors.blueAccent),
+                    )
+                  );
+                }
+                if (snapshot.hasError) {
+                  return Text("Error pulling clinical timeline: ${snapshot.error}", style: TextStyle(color: Colors.red));
+                }
+                return Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(20)
+                  ),
+                  child: Text(
+                    snapshot.data ?? "Report unavailable.",
+                    style: GoogleFonts.plusJakartaSans(color: Colors.black87, fontSize: 16, height: 1.6, fontWeight: FontWeight.w500)
+                  ),
+                );
+              }
+            ),
+            const SizedBox(height: 24),
           ],
         ),
       ),

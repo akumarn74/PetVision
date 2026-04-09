@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/api_client.dart';
 import '../domain/models.dart';
 import 'scan_result_screen.dart';
+import 'paywall_screen.dart';
 
 class CameraScreen extends ConsumerStatefulWidget {
   final PetProfile pet;
@@ -117,6 +118,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
         if (errorString.contains("IDENTITY MISMATCH")) {
           // Extract the exact reason formulated by GPT-4o
           String reason = errorString.split("IDENTITY MISMATCH:").last.trim();
+          reason = reason.replaceAll('"}', '').replaceAll('\\"', '"').trim();
+          
           showDialog(
             context: context,
             builder: (ctx) => AlertDialog(
@@ -137,6 +140,15 @@ class _CameraScreenState extends ConsumerState<CameraScreen> {
                 )
               ],
             )
+          );
+        } else if (errorString.contains("402")) {
+          // Free limits exceeded, route to Monetization hook!
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            useSafeArea: true,
+            backgroundColor: Colors.transparent,
+            builder: (ctx) => const PaywallScreen()
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Inference Error: $errorString')));

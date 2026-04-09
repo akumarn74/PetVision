@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../domain/models.dart';
 import '../core/api_client.dart';
+import 'timeline_screen.dart';
 
 class ScanResultScreen extends ConsumerStatefulWidget {
   final PetProfile pet;
@@ -124,7 +125,12 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
                   
                   // Bottom CTA
                   InkWell(
-                    onTap: () => Navigator.pop(context),
+                    onTap: () {
+                      Navigator.pushReplacement(
+                        context, 
+                        MaterialPageRoute(builder: (_) => TimelineScreen(pet: widget.pet))
+                      );
+                    },
                     borderRadius: BorderRadius.circular(32),
                     child: Container(
                       width: double.infinity,
