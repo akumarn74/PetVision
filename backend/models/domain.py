@@ -24,6 +24,10 @@ class PetProfile(Base):
     breed = Column(String)
     age_months = Column(Integer)
     baseline_weight = Column(Float)
+    xp_points = Column(Integer, default=0)
+    
+    # Many-to-many Household Join Code
+    join_code = Column(String, unique=True, index=True, nullable=True)
     
     # Cal AI Nutrition Tracking
     activity_level = Column(String, default="moderate") # couch_potato, moderate, active
@@ -31,6 +35,14 @@ class PetProfile(Base):
     target_calories = Column(Float, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class PetHouseholdLink(Base):
+    __tablename__ = "pet_household_links"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    pet_id = Column(UUID(as_uuid=True), ForeignKey("pet_profiles.id"), index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
+    joined_at = Column(DateTime, default=datetime.utcnow)
 
 class PetScanResult(Base):
     __tablename__ = "pet_scan_results"
@@ -62,6 +74,17 @@ class DietEntry(Base):
     proteins_g = Column(Float)
     fats_g = Column(Float)
     raw_query = Column(String) # the natural language string they typed
+
+class FoodCatalog(Base):
+    __tablename__ = "food_catalog"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, index=True)
+    brand = Column(String)
+    calories_per_serving = Column(Float)
+    proteins_per_serving = Column(Float)
+    fats_per_serving = Column(Float)
+    serving_size_desc = Column(String) # e.g. '1 Cup', '1 Can'
 
 # Pydantic Schemas
 class UserRegister(BaseModel):
@@ -105,6 +128,8 @@ class PetProfileResponse(BaseModel):
     breed: str
     age_months: int
     baseline_weight: float
+    xp_points: int
+    join_code: str | None = None
     activity_level: str
     diet_goal: str
     target_calories: float | None = None
@@ -112,3 +137,14 @@ class PetProfileResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class FoodCatalogResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    brand: str
+    calories_per_serving: float
+    proteins_per_serving: float
+    fats_per_serving: float
+    serving_size_desc: str
+    
+    class Config:
+        from_attributes = True

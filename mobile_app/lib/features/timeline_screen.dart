@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../domain/models.dart';
 import '../core/api_client.dart';
 import 'camera_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class TimelineScreen extends ConsumerStatefulWidget {
   final PetProfile pet;
@@ -210,22 +211,41 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
 
     String contextText = "";
     String trajectoryTip = "";
+    Map<String, dynamic>? affiliateData;
+    
     if (metric == "Body Condition") {
       contextText = llmContext["body_context"] ?? "This tracks your pet's muscular mass and fat reserves against their rolling 30-day average.";
       trajectoryTip = llmContext["body_trajectory"] ?? (isPositive ? "The AI detected an increase in body condition. Ensure they aren't becoming overweight." : (isNeutral ? "Consistent structural weight maintained perfectly." : "Minor muscle loss or fat depletion detected. Check their calorie intake."));
+      affiliateData = llmContext["body_affiliate"];
     } else if (metric == "Coat Health") {
       contextText = llmContext["coat_context"] ?? "The AI constantly re-evaluates the pixel luminance and fur texture to map historical shedding or gloss patterns.";
       trajectoryTip = llmContext["coat_trajectory"] ?? (isPositive ? "Gorgeous coat improvement! Your recent dietary choices are working." : (isNeutral ? "Consistent coat hydration level." : "A regression in coat health detected. Consider omega-3 supplements or more frequent brushing."));
+      affiliateData = llmContext["coat_affiliate"];
     } else if (metric == "Eye Clarity") {
       contextText = llmContext["eye_context"] ?? "We cross-reference current cornea opacity measurements against previous scans to catch micro-cataracts early.";
       trajectoryTip = llmContext["eye_trajectory"] ?? (isPositive ? "Excellent optical clarity improvement, likely decreased tearing." : (isNeutral ? "Optics remain stable and clear." : "A negative drop indicates new redness, tearing, or lens opacity. Watch closely."));
+      affiliateData = llmContext["eye_affiliate"];
     } else if (metric == "Dental Plaque") {
       contextText = llmContext["dental_context"] ?? "This tracks the algorithm's calculation of calculus bounds along the gumline over time to measure tartar accumulation velocity.";
       trajectoryTip = llmContext["dental_trajectory"] ?? (isPositive ? "Teeth are appearing cleaner relative to the last 30 days! Good brushing." : (isNeutral ? "Plaque baseline is stable." : "Accelerated tartar buildup detected relative to history. Time for a dental stick!"));
+      affiliateData = llmContext["dental_affiliate"];
     }
 
     final Color lightGradient = tickerColor.withValues(alpha: 0.05);
     final Color medGradient = tickerColor.withValues(alpha: 0.15);
+
+    Widget? affiliateCta;
+    if (affiliateData != null && affiliateData["label"] != null) {
+      String label = affiliateData["label"];
+      String colorHint = affiliateData["color_hint"]?.toString().toLowerCase() ?? "grey";
+      MaterialColor color = Colors.grey;
+      if (colorHint.contains("red")) color = Colors.red;
+      else if (colorHint.contains("orange")) color = Colors.orange;
+      else if (colorHint.contains("green")) color = Colors.green;
+      else if (colorHint.contains("blue")) color = Colors.blue;
+
+      affiliateCta = _buildAffiliateCTA(label, color);
+    }
 
     return Container(
       width: double.infinity,
@@ -327,6 +347,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                             Expanded(child: Text(trajectoryTip, style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w700, height: 1.5))),
                           ],
                         ),
+                        if (affiliateCta != null) affiliateCta,
                       ],
                     ),
                   ),
@@ -334,6 +355,33 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAffiliateCTA(String label, MaterialColor color) {
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      width: double.infinity,
+      child: InkWell(
+        onTap: () async {
+          final uri = Uri.parse('https://amazon.com/s?k=${Uri.encodeComponent(label)}');
+          if (await canLaunchUrl(uri)) {
+             await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.5)),
+          ),
+          child: Center(
+            child: Text(label, style: GoogleFonts.plusJakartaSans(color: color.shade700, fontWeight: FontWeight.bold, fontSize: 13)),
+          ),
         ),
       ),
     );

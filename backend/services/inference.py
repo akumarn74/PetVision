@@ -120,3 +120,47 @@ async def run_pet_inference(image_bytes: bytes, expected_pet_name: str, expected
     except Exception as e:
         logging.error(f"OpenAI System Integrations Failure: {str(e)}")
         raise ValueError(f"CRITICAL SYSTEM FAILURE: {str(e)}")
+
+async def run_onboarding_inference(image_bytes: bytes) -> dict:
+    """Uses GPT-4o Vision to estimate the pet's breed, weight, and assigned vibe emoji based on a picture."""
+    if not LLM_API_KEY or LLM_API_KEY.strip() == "":
+        raise ValueError("OPENAI_API_KEY is missing.")
+
+    encoded_string = base64.b64encode(image_bytes).decode("utf-8")
+    system_prompt = (
+        "You are PetVision AI. The user is registering a new pet profile. "
+        "Analyze this image and identify the breed explicitly. Then estimate their average adult weight class in pounds based on that breed. "
+        "Also pick exactly one emoji to represent the pet's species (e.g. 🐶 for dog, 🐱 for cat, 🐰 for rabbit). "
+        "Output strict JSON with these keys exactly: 'breed' (string), 'weight_lbs' (float), 'vibe_emoji' (string)."
+    )
+
+    payload = {
+        "model": "gpt-4o",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "Identify this pet's breed and weight."},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_string}"}}
+                ]
+            }
+        ],
+        "response_format": {"type": "json_object"},
+        "max_tokens": 100,
+        "temperature": 0.3
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {LLM_API_KEY}", "Content-Type": "application/json"},
+                json=payload
+            )
+            response.raise_for_status()
+            data = response.json()
+            return json.loads(data["choices"][0]["message"]["content"].strip())
+    except Exception as e:
+        logging.error(f"Onboarding Inference Failure: {str(e)}")
+        raise ValueError(f"Failed to infer pet data: {str(e)}")

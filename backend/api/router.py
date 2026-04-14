@@ -1,7 +1,8 @@
 from fastapi import APIRouter, File, UploadFile, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.db.session import get_db
-from backend.models.domain import PetScanResponse, PetScanResult, PetProfile, PetProfileResponse, DietEntry, DietEntryResponse
+from backend.db.session import get_db
+from backend.models.domain import PetScanResponse, PetScanResult, PetProfile, PetProfileResponse, DietEntry, DietEntryResponse, PetHouseholdLink, FoodCatalog, FoodCatalogResponse
 from backend.services.inference import run_pet_inference
 from backend.services.storage import upload_file_to_s3
 from backend.services.trends import calculate_30_day_trends
@@ -9,7 +10,7 @@ from backend.services.llm import generate_vet_report_summary
 from backend.services.diet import parse_unstructured_meal_to_json, generate_dietary_recommendation, calculate_target_calories, parse_food_image_to_json
 from backend.api.websockets import manager
 from backend.services.auth import get_current_user
-from backend.services.billing import check_monthly_scan_quota
+from backend.services.billing import check_monthly_ai_quota
 from backend.models.domain import UserAccount
 import uuid
 import json
@@ -31,29 +32,91 @@ async def create_pet_profile(
     db: AsyncSession = Depends(get_db),
     current_user: UserAccount = Depends(get_current_user)
 ):
+    # Auto-calibrate the Baseline target calories using the default Lifestyle Goals
+    target = await calculate_target_calories(
+        profile.name, profile.breed, profile.baseline_weight, profile.age_months,
+        "moderate", "maintain"
+    )
+
+    import random
+    import string
+    # Generate 6 character alphanumeric code
+    join_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    
     new_pet = PetProfile(
         name=profile.name,
         breed=profile.breed,
         age_months=profile.age_months,
         baseline_weight=profile.baseline_weight,
-        owner_id=current_user.id
+        owner_id=current_user.id,
+        target_calories=target,
+        join_code=join_code
     )
     db.add(new_pet)
     await db.commit()
     await db.refresh(new_pet)
-    return {"pet_id": new_pet.id, "message": "Pet profile created"}
+    
+    # Insert Household mapping
+    household_link = PetHouseholdLink(pet_id=new_pet.id, user_id=current_user.id)
+    db.add(household_link)
+    await db.commit()
+    
+    return {"pet_id": new_pet.id, "message": "Pet profile created", "target_calories": target}
 
-from sqlalchemy import select, delete
+from backend.services.inference import run_onboarding_inference
+
+@router.post("/pets/auto-detect")
+async def auto_detect_pet(
+    file: UploadFile = File(...),
+    current_user: UserAccount = Depends(get_current_user)
+):
+    """Takes a raw photo and uses Vision AI to guess the breed and weight for form auto-filling."""
+    file_bytes = await file.read()
+    try:
+        detection = await run_onboarding_inference(file_bytes)
+        return detection
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+from sqlalchemy import select, delete, update
 
 @router.get("/pets", response_model=list[PetProfileResponse])
 async def list_pets(
     db: AsyncSession = Depends(get_db),
     current_user: UserAccount = Depends(get_current_user)
 ):
-    """Fetches all pets currently matching an explicit signed-in user."""
-    query = select(PetProfile).where(PetProfile.owner_id == current_user.id)
+    """Fetches all pets tied to the user via Household logic."""
+    query = select(PetProfile).join(PetHouseholdLink, PetProfile.id == PetHouseholdLink.pet_id).where(PetHouseholdLink.user_id == current_user.id)
     result = await db.execute(query)
     return result.scalars().all()
+
+class JoinPetRequest(BaseModel):
+    join_code: str
+
+@router.post("/pets/join")
+async def join_pet_household(
+    req: JoinPetRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user)
+):
+    code = req.join_code.strip().upper()
+    query = select(PetProfile).where(PetProfile.join_code == code)
+    result = await db.execute(query)
+    pet = result.scalar_one_or_none()
+    
+    if not pet:
+        raise HTTPException(status_code=404, detail="Invalid Join Code.")
+        
+    # check if already linked
+    check_query = select(PetHouseholdLink).where(PetHouseholdLink.pet_id == pet.id, PetHouseholdLink.user_id == current_user.id)
+    check_res = await db.execute(check_query)
+    if check_res.scalar_one_or_none():
+         raise HTTPException(status_code=400, detail="You are already mapped to this pet household.")
+         
+    link = PetHouseholdLink(pet_id=pet.id, user_id=current_user.id)
+    db.add(link)
+    await db.commit()
+    return {"message": f"Successfully joined {pet.name}'s household!"}
 
 @router.delete("/pets/{pet_id}")
 async def delete_pet(
@@ -68,10 +131,11 @@ async def delete_pet(
     return {"message": "Pet deleted successfully."}
 
 async def verify_pet_ownership(pet_id: uuid.UUID, owner_id: uuid.UUID, db: AsyncSession):
-    query = select(PetProfile.id).where(PetProfile.id == pet_id, PetProfile.owner_id == owner_id)
+    # Co-parenting authorization: Must exist in Household Link
+    query = select(PetHouseholdLink.id).where(PetHouseholdLink.pet_id == pet_id, PetHouseholdLink.user_id == owner_id)
     result = await db.execute(query)
     if not result.scalar_one_or_none():
-        raise HTTPException(status_code=403, detail="Not authorized to access this pet.")
+        raise HTTPException(status_code=403, detail="Not authorized to access this pet household.")
 
 @router.get("/pets/{pet_id}/scans", response_model=list[PetScanResponse])
 async def list_pet_scans(
@@ -103,7 +167,7 @@ async def sync_offline_scans(
     
     responses = []
     for file in files:
-        await check_monthly_scan_quota(db, current_user)
+        await check_monthly_ai_quota(db, current_user)
         try:
             file_bytes = await file.read()
             image_url = await upload_file_to_s3(file, pet_id)
@@ -119,6 +183,10 @@ async def sync_offline_scans(
                 image_url=image_url
             )
             db.add(new_scan)
+            
+            # Incremental XP boost
+            await db.execute(update(PetProfile).where(PetProfile.id == pet_id).values(xp_points=PetProfile.xp_points + 200))
+            
             await db.commit()
             await db.refresh(new_scan)
             responses.append({"filename": file.filename, "status": "success", "id": new_scan.id})
@@ -138,7 +206,7 @@ async def process_new_scan(
     Receives a 10-second burst or photo, runs YOLO, stores the metrics into Timescale.
     """
     await verify_pet_ownership(pet_id, current_user.id, db)
-    await check_monthly_scan_quota(db, current_user)
+    await check_monthly_ai_quota(db, current_user)
     
     await manager.broadcast_status(pet_id, "ingesting", {"message": "Uploading camera burst safely..."})
     try:
@@ -185,6 +253,9 @@ async def process_new_scan(
         image_url=image_url
     )
     db.add(new_scan)
+    
+    # +200 XP Gamification Hook for health scan
+    await db.execute(update(PetProfile).where(PetProfile.id == pet_id).values(xp_points=PetProfile.xp_points + 200))
     await db.commit()
     await db.refresh(new_scan)
     
@@ -250,6 +321,7 @@ async def log_pet_meal(
     current_user: UserAccount = Depends(get_current_user)
 ):
     await verify_pet_ownership(pet_id, current_user.id, db)
+    await check_monthly_ai_quota(db, current_user)
     
     # 1. Fetch Profile
     profile_query = select(PetProfile).where(PetProfile.id == pet_id)
@@ -268,6 +340,8 @@ async def log_pet_meal(
         raw_query=data.raw_text
     )
     db.add(entry)
+    # +50 XP Gamification Hook for meal log
+    await db.execute(update(PetProfile).where(PetProfile.id == pet_id).values(xp_points=PetProfile.xp_points + 50))
     await db.commit()
     await db.refresh(entry)
     
@@ -348,6 +422,7 @@ async def log_pet_meal_image(
     current_user: UserAccount = Depends(get_current_user)
 ):
     await verify_pet_ownership(pet_id, current_user.id, db)
+    await check_monthly_ai_quota(db, current_user)
     profile = (await db.execute(select(PetProfile).where(PetProfile.id == pet_id))).scalar_one_or_none()
     
     # GPT-4o Vision Pipeline
@@ -364,7 +439,158 @@ async def log_pet_meal_image(
         raw_query="[IMAGE SCAN]"
     )
     db.add(entry)
+    # +50 XP Gamification Hook for CV meal log
+    await db.execute(update(PetProfile).where(PetProfile.id == pet_id).values(xp_points=PetProfile.xp_points + 50))
     await db.commit()
     await db.refresh(entry)
     
     return entry
+
+from backend.services.llm import generate_personalized_push
+
+@router.get("/notifications/daily/{pet_id}")
+async def get_daily_notification(
+    pet_id: uuid.UUID, 
+    db: AsyncSession = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user)
+):
+    """Dynamically generates a sassy/humorous push notification banner payload using GPT-4o-mini."""
+    await verify_pet_ownership(pet_id, current_user.id, db)
+    
+    profile = (await db.execute(select(PetProfile).where(PetProfile.id == pet_id))).scalar_one_or_none()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Pet not found.")
+    
+    msg = await generate_personalized_push(profile.name, profile.breed, profile.diet_goal)
+    return {"message": msg}
+
+@router.get("/users/streak")
+async def get_user_activity_streak(
+    db: AsyncSession = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user)
+):
+    """Calculates consecutive days of app usage (Diet logging or Pet scans) for DAU gamification."""
+    import datetime
+    
+    # Needs to get all pets owned by this user
+    pets_query = select(PetProfile.id).where(PetProfile.owner_id == current_user.id)
+    pets = (await db.execute(pets_query)).scalars().all()
+    
+    if not pets:
+        return {"streak": 0}
+        
+    dates_with_activity = set()
+    
+    # 1. Fetch diet entry dates
+    diet_query = select(DietEntry.timestamp).where(DietEntry.pet_id.in_(pets))
+    diet_results = (await db.execute(diet_query)).scalars().all()
+    for ts in diet_results:
+        dates_with_activity.add(ts.date())
+        
+    # 2. Fetch scan dates
+    scan_query = select(PetScanResult.timestamp).where(PetScanResult.pet_id.in_(pets))
+    scan_results = (await db.execute(scan_query)).scalars().all()
+    for ts in scan_results:
+        dates_with_activity.add(ts.date())
+        
+    if not dates_with_activity:
+        return {"streak": 0}
+        
+    activity_dates = sorted(list(dates_with_activity), reverse=True)
+    today = datetime.datetime.utcnow().date()
+    yesterday = today - datetime.timedelta(days=1)
+    
+    streak = 0
+    current_check_date = today
+    
+    if today in activity_dates:
+        streak = 1
+        idx = activity_dates.index(today)
+    elif yesterday in activity_dates:
+        streak = 1
+        current_check_date = yesterday
+        idx = activity_dates.index(yesterday)
+    else:
+        return {"streak": 0}
+        
+    for d in activity_dates[idx+1:]:
+        current_check_date = current_check_date - datetime.timedelta(days=1)
+        if d == current_check_date:
+            streak += 1
+        else:
+            break
+            
+    return {"streak": streak}
+
+
+@router.get("/leaderboard")
+async def get_global_leaderboard(db: AsyncSession = Depends(get_db)):
+    """Fetches the top 50 healthiest pets globally."""
+    query = select(PetProfile.id, PetProfile.name, PetProfile.breed, PetProfile.xp_points).order_by(PetProfile.xp_points.desc()).limit(50)
+    result = await db.execute(query)
+    pets = result.all()
+    return [{"id": p.id, "name": p.name, "breed": p.breed, "xp_points": p.xp_points} for p in pets]
+
+@router.get("/nutrition/search", response_model=list[FoodCatalogResponse])
+async def search_food_catalog(
+    q: str = "",
+    db: AsyncSession = Depends(get_db)
+):
+    """Lightning fast SQL ILIKE typeahead search for known dog/cat food."""
+    query = select(FoodCatalog).where(FoodCatalog.name.ilike(f"%{q}%")).limit(10)
+    result = await db.execute(query)
+    return result.scalars().all()
+
+class LogPredefinedRequest(BaseModel):
+    food_id: str
+
+@router.post("/nutrition/log_predefined/{pet_id}", response_model=DietEntryResponse)
+async def log_predefined_food(
+    pet_id: uuid.UUID,
+    data: LogPredefinedRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user)
+):
+    """Bypasses LLM entirely, instantly mapping a SQLite predefined macro set into the Pet's timeline +50 XP"""
+    await verify_pet_ownership(pet_id, current_user.id, db)
+    
+    # fetch the food
+    food = (await db.execute(select(FoodCatalog).where(FoodCatalog.id == uuid.UUID(data.food_id)))).scalar_one_or_none()
+    if not food:
+        raise HTTPException(status_code=404, detail="Food item not found in catalog.")
+        
+    entry = DietEntry(
+        pet_id=pet_id,
+        food_name=food.name,
+        calories=food.calories_per_serving,
+        proteins_g=food.proteins_per_serving,
+        fats_g=food.fats_per_serving,
+        raw_query=f"[TYPEAHEAD] {food.name}"
+    )
+    db.add(entry)
+    from sqlalchemy import update
+    await db.execute(update(PetProfile).where(PetProfile.id == pet_id).values(xp_points=PetProfile.xp_points + 50))
+    await db.commit()
+    await db.refresh(entry)
+    
+    return entry
+
+@router.delete("/nutrition/{entry_id}")
+async def delete_diet_entry(
+    entry_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserAccount = Depends(get_current_user)
+):
+    """Deletes a diet entry after validating ownership of the associated pet"""
+    result = await db.execute(select(DietEntry).where(DietEntry.id == entry_id))
+    entry = result.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Diet entry not found.")
+        
+    await verify_pet_ownership(entry.pet_id, current_user.id, db)
+    
+    await db.delete(entry)
+    
+    # Optional: dock 50 XP if deleted? We'll leave XP as is for grace periods.
+    await db.commit()
+    return {"status": "deleted"}

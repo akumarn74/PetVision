@@ -97,6 +97,47 @@ class ApiClient {
     }
   }
 
+  Future<List<PetProfile>> getLeaderboard() async {
+    final response = await http.get(Uri.parse('$baseUrl/api/leaderboard'), headers: _headers);
+    if (response.statusCode == 200) {
+      final List data = json.decode(response.body);
+      return data.map((json) => PetProfile.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load leaderboard');
+    }
+  }
+
+  Future<List<FoodCatalogItem>> searchPredefinedFoods(String query) async {
+    final response = await http.get(Uri.parse('$baseUrl/api/nutrition/search?q=$query'), headers: _headers);
+    if (response.statusCode == 200) {
+      final List data = json.decode(response.body);
+      return data.map((j) => FoodCatalogItem.fromJson(j)).toList();
+    }
+    return [];
+  }
+
+  Future<void> logPredefinedFood(String petId, String foodId) async {
+    final body = json.encode({"food_id": foodId});
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/nutrition/log_predefined/$petId'),
+      headers: _headers,
+      body: body,
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to log predefined food');
+    }
+  }
+
+  Future<void> deleteDietEntry(String entryId) async {
+    final response = await http.delete(
+      Uri.parse('$baseUrl/api/nutrition/$entryId'),
+      headers: _headers,
+    );
+    if (response.statusCode != 200) {
+      throw Exception('Failed to delete diet entry');
+    }
+  }
+
   Future<void> createPet(String name, String breed, int ageMonths, double weight) async {
     final body = json.encode({
       "name": name,
@@ -114,6 +155,30 @@ class ApiClient {
     if (response.statusCode != 200) {
       throw Exception('Failed to create pet. ${response.body}');
     }
+  }
+
+  Future<void> joinPetHousehold(String code) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/pets/join'),
+      headers: _headers,
+      body: json.encode({"join_code": code}),
+    );
+    if (response.statusCode != 200) {
+      throw Exception(json.decode(response.body)['detail'] ?? 'Failed to join pet household');
+    }
+  }
+
+  Future<Map<String, dynamic>> autoDetectPet(XFile file) async {
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/api/pets/auto-detect'))
+      ..headers.addAll({if (authToken != null) 'Authorization': 'Bearer $authToken'});
+      
+    final bytes = await file.readAsBytes();
+    request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: file.name));
+    
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    if (response.statusCode == 200) return json.decode(response.body);
+    throw Exception('Failed to auto-detect pet attributes: ${response.body}');
   }
 
   Future<PetScanResult> uploadScan(String petId, XFile file) async {
@@ -160,6 +225,19 @@ class ApiClient {
     final response = await http.get(Uri.parse('$baseUrl/api/scans/$petId/vet_report'), headers: _headers);
     if (response.statusCode == 200) return json.decode(response.body)['vet_report'];
     throw Exception('Failed to fetch Vet PDF summary');
+  }
+
+  Future<String> getDailyPush(String petId) async {
+    final response = await http.get(Uri.parse('$baseUrl/api/notifications/daily/$petId'), headers: _headers);
+    if (response.statusCode == 200) return json.decode(response.body)['message'];
+    throw Exception('Failed to fetch daily push message');
+  }
+
+  Future<int> getStreak() async {
+    if (authToken == null) return 0;
+    final response = await http.get(Uri.parse('$baseUrl/api/users/streak'), headers: _headers);
+    if (response.statusCode == 200) return json.decode(response.body)['streak'];
+    return 0; // Fail silently if gamification engine drops
   }
 
   Future<void> logDietMeal(String petId, String foodDescription) async {

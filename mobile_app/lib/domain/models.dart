@@ -8,6 +8,8 @@ class PetProfile {
   final String activityLevel;
   final String dietGoal;
   final double? targetCalories;
+  final String? joinCode;
+  final int xpPoints;
 
   PetProfile({
     required this.id,
@@ -19,6 +21,8 @@ class PetProfile {
     this.activityLevel = 'moderate',
     this.dietGoal = 'maintain',
     this.targetCalories,
+    this.joinCode,
+    this.xpPoints = 0,
   });
 
   factory PetProfile.fromJson(Map<String, dynamic> json) {
@@ -32,6 +36,8 @@ class PetProfile {
       activityLevel: json['activity_level'] ?? 'moderate',
       dietGoal: json['diet_goal'] ?? 'maintain',
       targetCalories: json['target_calories'] != null ? (json['target_calories']).toDouble() : null,
+      joinCode: json['join_code'],
+      xpPoints: json['xp_points'] ?? 0,
     );
   }
 }
@@ -84,6 +90,38 @@ class BackendStatusMessage {
     return BackendStatusMessage(
       status: json['status'] ?? 'unknown',
       message: json['details']?['message'] ?? '',
+    );
+  }
+}
+
+class FoodCatalogItem {
+  final String id;
+  final String name;
+  final String brand;
+  final double caloriesPerServing;
+  final double proteinsPerServing;
+  final double fatsPerServing;
+  final String servingSizeDesc;
+
+  FoodCatalogItem({
+    required this.id,
+    required this.name,
+    required this.brand,
+    required this.caloriesPerServing,
+    required this.proteinsPerServing,
+    required this.fatsPerServing,
+    required this.servingSizeDesc,
+  });
+
+  factory FoodCatalogItem.fromJson(Map<String, dynamic> json) {
+    return FoodCatalogItem(
+      id: json['id'],
+      name: json['name'],
+      brand: json['brand'],
+      caloriesPerServing: (json['calories_per_serving']).toDouble(),
+      proteinsPerServing: (json['proteins_per_serving']).toDouble(),
+      fatsPerServing: (json['fats_per_serving']).toDouble(),
+      servingSizeDesc: json['serving_size_desc'],
     );
   }
 }

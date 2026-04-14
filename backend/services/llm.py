@@ -12,6 +12,65 @@ except ImportError:
 
 LLM_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
+async def generate_personalized_push(pet_name: str, context_str: str) -> str:
+    """Uses GPT-4o-mini to dynamically write a hilarious, one-sentence push notification."""
+    if not LLM_API_KEY or LLM_API_KEY.strip() == "":
+        return f"🐾 Did you feed {pet_name} yet? The AI is starving for data."
+        
+    system_prompt = (
+        "You are a sassy, humorous AI pet assistant (like Duolingo owl or MyFitnessPal but funnier). "
+        "Write exactly ONE very short, punchy push notification to remind the owner to log their pet's diet or scan their health. "
+        "Use emojis. Be slightly passive-aggressive or dramatic about the pet's needs. "
+        "Do not use quotes."
+    )
+    
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {LLM_API_KEY}", "Content-Type": "application/json"},
+                json={
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"Pet Name: {pet_name}. Recent Context: {context_str}"}
+                    ],
+                    "temperature": 0.8,
+                    "max_tokens": 50
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+            return data["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        logging.error(f"Push AI Failure: {str(e)}")
+        return f"🐾 Did you feed {pet_name} yet? The AI is starving for data."
+
+async def generate_empty_state_message(pet_name: str, context: str) -> str:
+    """Uses GPT-4o-mini to dynamically generate a hype message when there is not enough longitudinal data."""
+    if not LLM_API_KEY or LLM_API_KEY.strip() == "":
+        return "Need more data for trends."
+        
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {LLM_API_KEY}", "Content-Type": "application/json"},
+                json={
+                    "model": "gpt-4o-mini",
+                    "messages": [
+                        {"role": "system", "content": "You are PetVision AI. Write exactly ONE engaging sentence explaining why the pet needs more data/scans to generate an AI baseline. Be encouraging."},
+                        {"role": "user", "content": f"Pet Name: {pet_name}. Context: {context}"}
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 50
+                }
+            )
+            response.raise_for_status()
+            return response.json()["choices"][0]["message"]["content"].strip()
+    except Exception:
+        return "Need more data for trends."
+
 async def generate_vet_report_summary(pet_name: str, trends_dict: dict, recent_insights: list[str]) -> str:
     """
     Simulates sending the latest TimescaleDB longitudinal metrics to an LLM 
@@ -92,11 +151,14 @@ async def generate_temporal_delta_context(pet_name: str, build_profile_str: str,
     system_prompt = (
         "You are 'PetVision AI', an elite veterinary tracking model. "
         "Analyze these 30-day percentage deltas and generate custom trajectory tracking analysis. "
-        "Return STRICT JSON with these exactly 8 keys: "
-        "'body_context', 'body_trajectory', 'coat_context', 'coat_trajectory', "
-        "'eye_context', 'eye_trajectory', 'dental_context', 'dental_trajectory'. "
+        "Return STRICT JSON with these exactly 12 keys: "
+        "'body_context', 'body_trajectory', 'body_affiliate', "
+        "'coat_context', 'coat_trajectory', 'coat_affiliate', "
+        "'eye_context', 'eye_trajectory', 'eye_affiliate', "
+        "'dental_context', 'dental_trajectory', 'dental_affiliate'. "
         "Contexts should be 1-2 dense sentences explaining the biological tracking metric itself. "
-        "Trajectories should be 2-3 dense sentences explaining what the specific math (+2.4%, -1.1%) means clinically for this exact pet!"
+        "Trajectories should be 2-3 dense sentences explaining what the specific math (+2.4%, -1.1%) means clinically for this exact pet! "
+        "For the '*_affiliate' keys, if the trajectory is NEGATIVE (getting worse), recommend exactly ONE real e-commerce product inside a JSON object: {\"label\": \"🛍️ Buy [Product Name]\", \"color_hint\": \"[red|orange|green]\"}. If the trajectory is neutral or positive, return null for the affiliate key."
     )
 
     user_prompt = f"Patient: {pet_name} - {build_profile_str}\n\n"

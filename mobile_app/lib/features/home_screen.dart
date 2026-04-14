@@ -1,28 +1,141 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../core/api_client.dart';
-import '../domain/models.dart';
-import 'add_pet_screen.dart';
-import 'camera_screen.dart';
-import 'timeline_screen.dart';
-import 'nutrition_screen.dart';
-import 'nutrition_onboarding_screen.dart';
 
-class HomeScreen extends ConsumerWidget {
+import '../domain/models.dart';
+import '../core/api_client.dart';
+import 'nutrition_screen.dart';
+import 'camera_screen.dart';
+import 'nutrition_onboarding_screen.dart';
+import 'timeline_screen.dart';
+import 'leaderboard_screen.dart';
+import 'household_setup_screen.dart';
+
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _hasShownPush = false;
+  int _streak = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchStreak();
+  }
+
+  Future<void> _fetchStreak() async {
+    try {
+      final streak = await ref.read(apiClientProvider).getStreak();
+      if (mounted) setState(() => _streak = streak);
+    } catch (e) {
+      // ignore silently if it fails on load
+    }
+  }
+
+  void _triggerHumorousPushNotification(PetProfile pet) {
+    if (_hasShownPush || !mounted) return;
+    _hasShownPush = true;
+
+    final tips = [
+      "I saw you eating that cheese. Tax is due.",
+      "My dataset indicates I have not been walked in 12 minutes.",
+      "Calculating optimal zoomies trajectory...",
+      "AI Analysis: Treats levels are critically low.",
+    ];
+    tips.shuffle();
+    final message = tips.first;
+
+    Future.delayed(const Duration(milliseconds: 2000), () {
+      if (!mounted) return;
+
+      final overlay = Overlay.of(context);
+      late OverlayEntry entry;
+      entry = OverlayEntry(
+          builder: (context) => Positioned(
+                top: 60, left: 16, right: 16,
+                child: Material(
+                  color: Colors.transparent,
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: -150.0, end: 0.0),
+                    duration: const Duration(milliseconds: 600),
+                    curve: Curves.easeOutBack,
+                    builder: (context, value, child) {
+                      return Transform.translate(offset: Offset(0, value), child: child);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 30, offset: const Offset(0, 15))],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 48, height: 48,
+                                decoration: BoxDecoration(
+                                  color: Colors.black,
+                                  borderRadius: BorderRadius.circular(14)
+                                ),
+                                child: const Center(child: Text("🐾", style: TextStyle(fontSize: 24))),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text("PetVision AI", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w900, color: Colors.black)),
+                                    const SizedBox(height: 4),
+                                    Text(message, style: GoogleFonts.plusJakartaSans(color: Colors.grey.shade600, fontSize: 13, height: 1.4)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ));
+
+      overlay.insert(entry);
+      Future.delayed(const Duration(seconds: 5), () {
+        entry.remove();
+      });
+    });
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
     final petsAsyncValue = ref.watch(petsListProvider);
 
+    petsAsyncValue.whenData((pets) {
+      if (pets.isNotEmpty && !_hasShownPush) {
+        _triggerHumorousPushNotification(pets.first);
+      }
+    });
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB), // Minimalist off-white
+      backgroundColor: const Color(0xFFF8FAFC), // Apple Health Minimalist Background
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Premium Header (Light)
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
               child: Row(
@@ -31,86 +144,96 @@ class HomeScreen extends ConsumerWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Welcome back,', style: GoogleFonts.plusJakartaSans(fontSize: 16, color: Colors.grey[600], fontWeight: FontWeight.w600)),
-                      Text('Your Pets', style: GoogleFonts.plusJakartaSans(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.black, letterSpacing: -1)),
+                      Text('PetVision UI', style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.grey.shade500, fontWeight: FontWeight.bold, letterSpacing: 2.0)),
+                      const SizedBox(height: 4),
+                      Text('Dashboard', style: GoogleFonts.plusJakartaSans(fontSize: 36, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -1)),
                     ],
                   ),
-                  InkWell(
-                    onTap: () {
-                      ref.read(authProvider.notifier).logout();
-                    },
-                    borderRadius: BorderRadius.circular(24),
-                    child: const CircleAvatar(
-                      radius: 24,
-                      backgroundColor: Colors.black,
-                      child: Icon(Icons.logout, color: Colors.white, size: 20),
-                    ),
+                  Row(
+                    children: [
+                      // Streak Pill
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.orange.withValues(alpha: 0.2))),
+                        child: Row(
+                          children: [
+                            const Text("🔥", style: TextStyle(fontSize: 16)),
+                            const SizedBox(width: 6),
+                            Text("$_streak", style: GoogleFonts.plusJakartaSans(color: Colors.orange.shade800, fontWeight: FontWeight.w900, fontSize: 16)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Leaderboard
+                      InkWell(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LeaderboardScreen())),
+                        borderRadius: BorderRadius.circular(24),
+                        child: Container(
+                          width: 46, height: 46,
+                          decoration: BoxDecoration(color: Colors.amber.shade400, shape: BoxShape.circle),
+                          child: const Center(child: Text("🏆", style: TextStyle(fontSize: 20))),
+                        ),
+                      ),
+                    ],
                   )
                 ],
               ),
             ),
-            
-            // List Feed
+
+            // Feed
             Expanded(
               child: petsAsyncValue.when(
                 data: (pets) {
-                  if (pets.isEmpty) {
-                    return Center(
-                      child: Text("No records yet.\nAdd a pet to start tracking.", textAlign: TextAlign.center, style: GoogleFonts.plusJakartaSans(color: Colors.grey[500], fontSize: 16, height: 1.5)),
-                    );
-                  }
                   return RefreshIndicator(
-                    color: Colors.black,
+                    color: Colors.black, backgroundColor: Colors.white,
                     onRefresh: () async => ref.refresh(petsListProvider),
                     child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
-                      physics: const BouncingScrollPhysics(),
-                      itemCount: pets.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 20),
-                      itemBuilder: (context, index) => ModernPetCard(pet: pets[index]),
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
+                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                      itemCount: pets.length + 1, // +1 for the Add New Pet card
+                      separatorBuilder: (_, __) => const SizedBox(height: 24),
+                      itemBuilder: (context, index) {
+                        if (index == pets.length) {
+                           return GestureDetector(
+                              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HouseholdSetupScreen())),
+                              child: Container(
+                                 height: 100,
+                                 decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(32),
+                                    border: Border.all(color: const Color(0xFFF1F5F9), width: 2),
+                                    boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, 10))]
+                                 ),
+                                 child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                       const Icon(Icons.add_circle, color: Colors.blueAccent, size: 28),
+                                       const SizedBox(width: 12),
+                                       Text("Add Pet Profile", style: GoogleFonts.plusJakartaSans(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold)),
+                                    ],
+                                 ),
+                              ),
+                           );
+                        }
+                        return CleanPetHeroCard(pet: pets[index]);
+                      },
                     ),
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator(color: Colors.black)),
-                error: (error, stack) => Center(child: Text("Connection Failed.", style: GoogleFonts.plusJakartaSans(color: Colors.redAccent))),
+                error: (error, stack) => Center(child: Text("Connection Failed.", style: GoogleFonts.plusJakartaSans(color: Colors.black54))),
               ),
             ),
           ],
         ),
-      ),
-      // Massive Pill FAB
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: InkWell(
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AddPetScreen())),
-          borderRadius: BorderRadius.circular(32),
-          child: Container(
-            width: double.infinity,
-            height: 64,
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(32),
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 20, offset: const Offset(0, 10))],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.add, color: Colors.white),
-                const SizedBox(width: 8),
-                Text('Add New Pet', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)),
-              ],
-            ),
-          ),
-        ),
-      ),
+      )
     );
   }
 }
 
-class ModernPetCard extends StatelessWidget {
+class CleanPetHeroCard extends StatelessWidget {
   final PetProfile pet;
-  const ModernPetCard({super.key, required this.pet});
+  const CleanPetHeroCard({super.key, required this.pet});
 
   @override
   Widget build(BuildContext context) {
@@ -119,93 +242,129 @@ class ModernPetCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(32), // Massive squarcle
-          border: Border.all(color: const Color(0xFFF1F5F9), width: 2),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 24, offset: const Offset(0, 8)),
-          ],
+          borderRadius: BorderRadius.circular(36),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 24, offset: const Offset(0, 10))],
+          border: Border.all(color: const Color(0xFFF1F5F9), width: 1.5)
         ),
-        padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 72, height: 72,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: const Center(child: Text('🐶', style: TextStyle(fontSize: 32))),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(pet.name, style: GoogleFonts.plusJakartaSans(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black, letterSpacing: -0.5)),
-                      const SizedBox(height: 4),
-                      Text('${pet.breed} • ${pet.ageMonths}mo', style: GoogleFonts.plusJakartaSans(fontSize: 15, color: Colors.grey[500], fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-                Icon(Icons.chevron_right_rounded, color: Colors.grey[300], size: 32),
-              ],
+            // Internal Header Layer
+            Padding(
+               padding: const EdgeInsets.all(24.0),
+               child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                     Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                           Container(
+                              width: 64, height: 64,
+                              decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(20)),
+                              child: const Center(child: Text("🐕", style: TextStyle(fontSize: 32)))
+                           ),
+                           const SizedBox(width: 16),
+                           Expanded(
+                              child: Column(
+                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                 children: [
+                                    const SizedBox(height: 4),
+                                    Text(pet.name, style: GoogleFonts.plusJakartaSans(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -1)),
+                                    const SizedBox(height: 2),
+                                    Text('${pet.breed} • ${pet.ageMonths}mo', style: GoogleFonts.plusJakartaSans(fontSize: 15, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+                                 ],
+                              )
+                           ),
+                           // Level / Badge
+                           Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
+                              child: Text("${pet.xpPoints} XP", style: GoogleFonts.plusJakartaSans(color: Colors.amber.shade900, fontWeight: FontWeight.w900, fontSize: 13)),
+                           )
+                        ],
+                     ),
+                     if (pet.joinCode != null) ...[
+                        const SizedBox(height: 20),
+                        InkWell(
+                          onTap: () {
+                             Clipboard.setData(ClipboardData(text: pet.joinCode!));
+                             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Invite Code copied!"), backgroundColor: Colors.green));
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+                            child: Row(
+                               mainAxisSize: MainAxisSize.min,
+                               children: [
+                                  Icon(Icons.family_restroom, size: 14, color: Colors.blue.shade600),
+                                  const SizedBox(width: 8),
+                                  Text("Invite Code: ${pet.joinCode}", style: GoogleFonts.plusJakartaSans(color: Colors.blue.shade600, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                               ],
+                            )
+                          ),
+                        )
+                     ]
+                  ],
+               ),
             ),
-            const SizedBox(height: 24),
-            // Dual Action Buttons
-            Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    onTap: () {
-                      if (pet.targetCalories == null) {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => NutritionOnboardingScreen(pet: pet)));
-                      } else {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => NutritionScreen(pet: pet)));
-                      }
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0FDF4), // Soft green
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.restaurant_menu_rounded, color: Color(0xFF16A34A), size: 18),
-                          const SizedBox(width: 8),
-                          Text("LOG DIET", style: GoogleFonts.plusJakartaSans(color: const Color(0xFF16A34A), fontWeight: FontWeight.w800, letterSpacing: 1.0, fontSize: 13)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: InkWell(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CameraScreen(pet: pet))),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF), // Soft premium blue
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.camera_alt_rounded, color: Color(0xFF2563EB), size: 18),
-                          const SizedBox(width: 8),
-                          Text("START SCAN", style: GoogleFonts.plusJakartaSans(color: const Color(0xFF2563EB), fontWeight: FontWeight.w800, letterSpacing: 1.0, fontSize: 13)),
-                        ],
+            
+            // Bottom Action Bar
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              decoration: BoxDecoration(
+                 color: const Color(0xFFF8FAFC), // Slight offset from white
+                 borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(36), bottomRight: Radius.circular(36)),
+                 border: Border(top: BorderSide(color: Colors.grey.shade100))
+              ),
+              child: Row(
+                children: [
+                  // Button 1: LOG DIET
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        if (pet.targetCalories == null) {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => NutritionOnboardingScreen(pet: pet)));
+                        } else {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => NutritionScreen(pet: pet)));
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))]),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.restaurant_menu_rounded, color: Colors.green, size: 18),
+                            const SizedBox(width: 8),
+                            Text("LOG DIET", style: GoogleFonts.plusJakartaSans(color: Colors.green.shade700, fontWeight: FontWeight.w900, letterSpacing: 1.0, fontSize: 13)),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 16),
+                  // Button 2: SNAP SCAT
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CameraScreen(pet: pet))),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        decoration: BoxDecoration(color: Colors.blueAccent, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.blueAccent.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))]),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 18),
+                            const SizedBox(width: 8),
+                            Text("SCAN", style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.0, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             )
           ],
         ),

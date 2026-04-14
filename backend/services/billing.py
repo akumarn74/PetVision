@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
-from backend.models.domain import UserAccount, PetProfile, PetScanResult
+from backend.models.domain import UserAccount, PetProfile, PetScanResult, DietEntry
 from fastapi import HTTPException
 from datetime import datetime
 import calendar
@@ -8,9 +8,9 @@ import calendar
 # Standard limits (would be fetched from Stripe or DB configs)
 FREE_TIER_SCAN_LIMIT = 10000 # Unlimited for Beta Developer Testing
 
-async def check_monthly_scan_quota(db: AsyncSession, user: UserAccount) -> bool:
+async def check_monthly_ai_quota(db: AsyncSession, user: UserAccount) -> bool:
     """
-    Validates if an authenticated user has exceeded their free monthly scans across all pets.
+    Validates if an authenticated user has exceeded their free monthly AI requests across all pets.
     Returns True if allowed. Raises an HTTPException if blocked!
     """
     
@@ -41,10 +41,22 @@ async def check_monthly_scan_quota(db: AsyncSession, user: UserAccount) -> bool:
     result = await db.execute(scan_count_query)
     monthly_scans = result.scalar_one()
 
-    if monthly_scans >= FREE_TIER_SCAN_LIMIT:
+    # 3. Count all diet entries made this month
+    diet_count_query = select(func.count(DietEntry.id)).where(
+        and_(
+            DietEntry.pet_id.in_(owned_pet_ids),
+            DietEntry.timestamp >= start_of_month
+        )
+    )
+    diet_result = await db.execute(diet_count_query)
+    monthly_diets = diet_result.scalar_one()
+
+    total_ai_requests = monthly_scans + monthly_diets
+
+    if total_ai_requests >= FREE_TIER_SCAN_LIMIT:
         raise HTTPException(
             status_code=402, 
-            detail=f"Payment Required: You have reached the Free Tier limit of {FREE_TIER_SCAN_LIMIT} scans per month. Please upgrade to Pro."
+            detail=f"Payment Required: You have reached the Free Tier AI limit of {FREE_TIER_SCAN_LIMIT} requests per month. Please upgrade to Pro."
         )
     
     return True

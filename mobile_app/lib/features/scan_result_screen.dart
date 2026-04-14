@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../domain/models.dart';
 import '../core/api_client.dart';
 import 'timeline_screen.dart';
+import 'package:share_plus/share_plus.dart';
 
 class ScanResultScreen extends ConsumerStatefulWidget {
   final PetProfile pet;
@@ -21,13 +23,17 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
   
-  // Calculate average overall health out of 100
-  double get totalHealthIndex => (
-    widget.result.bodyConditionScore +
-    widget.result.coatHealthScore + 
-    widget.result.eyeClarityScore + 
-    widget.result.dentalPlaqueScore
-  ) / 4.0;
+  // Calculate average overall health out of 100, ignoring -1.0
+  double get totalHealthIndex {
+    final scores = [
+      widget.result.bodyConditionScore,
+      widget.result.coatHealthScore,
+      widget.result.eyeClarityScore,
+      widget.result.dentalPlaqueScore
+    ].where((s) => s >= 0).toList();
+    if (scores.isEmpty) return 0.0;
+    return scores.reduce((a, b) => a + b) / scores.length;
+  }
 
   @override
   void initState() {
@@ -39,6 +45,11 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
     _progressAnimation = Tween<double>(begin: 0.0, end: totalHealthIndex / 100.0).animate(
       CurvedAnimation(parent: _progressController, curve: Curves.easeOutCubic)
     );
+    _progressAnimation.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        HapticFeedback.heavyImpact(); // Viral tactile feedback loop!
+      }
+    });
     _progressController.forward();
   }
   
@@ -121,7 +132,37 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
                     ],
                   ),
 
-                  const SizedBox(height: 64),
+                  const SizedBox(height: 48),
+                  
+                  // INSTAGRAM VIRAL EXPORT
+                  InkWell(
+                    onTap: () async {
+                      HapticFeedback.vibrate();
+                      final shareText = "Just analyzed ${widget.pet.name}'s health with PetVision AI! Overall Score: ${(totalHealthIndex).toStringAsFixed(0)}/100 🐶 Try it out!";
+                      await Share.share(shareText);
+                    },
+                    borderRadius: BorderRadius.circular(32),
+                    child: Container(
+                      width: double.infinity,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: [Color(0xFF833AB4), Color(0xFFFD1D1D), Color(0xFFF56040)]),
+                        borderRadius: BorderRadius.circular(32),
+                        boxShadow: [BoxShadow(color: const Color(0xFFFD1D1D).withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                      ),
+                      child: Center(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.camera_alt_outlined, color: Colors.white),
+                            const SizedBox(width: 12),
+                            Text('SHARE TO INSTAGRAM', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.0)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   
                   // Bottom CTA
                   InkWell(

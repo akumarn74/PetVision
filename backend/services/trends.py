@@ -3,7 +3,7 @@ from sqlalchemy import select, func, and_
 from backend.models.domain import PetScanResult, PetProfile
 import uuid
 from datetime import datetime, timedelta
-from backend.services.llm import generate_temporal_delta_context
+from backend.services.llm import generate_temporal_delta_context, generate_empty_state_message
 
 async def calculate_30_day_trends(db: AsyncSession, pet_id: uuid.UUID) -> dict:
     """
@@ -20,15 +20,23 @@ async def calculate_30_day_trends(db: AsyncSession, pet_id: uuid.UUID) -> dict:
     result = await db.execute(recent_query)
     latest_scan = result.scalar_one_or_none()
     
+    # Fetch Pet Info for custom LLM context
+    profile_query = select(PetProfile).where(PetProfile.id == pet_id)
+    profile_result = await db.execute(profile_query)
+    pet = profile_result.scalar_one_or_none()
+    pet_name = pet.name if pet else "Your pet"
+    breed_info = f"Breed: {pet.breed if pet else 'Unknown'}, Weight: {pet.baseline_weight if pet else 'Unknown'} lbs"
+
     if not latest_scan:
-        return {"status": "insufficient_data", "message": "No scans found for this pet."}
+        msg = await generate_empty_state_message(pet_name, "Zero scans exist.")
+        return {"status": "insufficient_data", "message": msg}
     
-    # 2. Calculate averages over the last 30 days
+    # 2. Calculate averages over the last 30 days, dropping -1.0 missing scores natively in PostgreSQL
     avg_query = select(
-        func.avg(PetScanResult.body_condition_score).label('avg_body'),
-        func.avg(PetScanResult.coat_health_score).label('avg_coat'),
-        func.avg(PetScanResult.eye_clarity_score).label('avg_eye'),
-        func.avg(PetScanResult.dental_plaque_score).label('avg_dental'),
+        func.avg(func.nullif(PetScanResult.body_condition_score, -1.0)).label('avg_body'),
+        func.avg(func.nullif(PetScanResult.coat_health_score, -1.0)).label('avg_coat'),
+        func.avg(func.nullif(PetScanResult.eye_clarity_score, -1.0)).label('avg_eye'),
+        func.avg(func.nullif(PetScanResult.dental_plaque_score, -1.0)).label('avg_dental'),
         func.count(PetScanResult.id).label('scan_count')
     ).where(
         and_(
@@ -42,10 +50,12 @@ async def calculate_30_day_trends(db: AsyncSession, pet_id: uuid.UUID) -> dict:
     averages = avg_result.one()
     
     if averages.scan_count == 0:
-        return {"status": "first_scan", "message": "First scan recorded. Need more data for trends."}
+        msg = await generate_empty_state_message(pet_name, "Has exactly 1 scan. Needs more for a 30-day baseline.")
+        return {"status": "first_scan", "message": msg}
         
     def calc_delta(latest_val, avg_val):
-        if avg_val is None or latest_val is None or avg_val == 0:
+        # Gracefully handle zero divergence or obscured metrics!
+        if avg_val is None or latest_val is None or avg_val <= 0 or latest_val < 0:
             return 0.0
         return round(((latest_val - avg_val) / avg_val) * 100, 2)
 
@@ -56,12 +66,6 @@ async def calculate_30_day_trends(db: AsyncSession, pet_id: uuid.UUID) -> dict:
         "dental_plaque_delta_pct": calc_delta(latest_scan.dental_plaque_score, averages.avg_dental),
     }
 
-    # Fetch Pet Info for custom LLM context
-    profile_query = select(PetProfile).where(PetProfile.id == pet_id)
-    profile_result = await db.execute(profile_query)
-    pet = profile_result.scalar_one_or_none()
-    pet_name = pet.name if pet else "Your pet"
-    breed_info = f"Breed: {pet.breed if pet else 'Unknown'}, Weight: {pet.baseline_weight if pet else 'Unknown'} lbs"
 
     # Query GPT-4o-mini to structurally synthesize exact physiological vectors specific to this math
     llm_context = await generate_temporal_delta_context(pet_name, breed_info, trends)

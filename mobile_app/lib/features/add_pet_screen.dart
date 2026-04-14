@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import '../core/api_client.dart';
 
 class AddPetScreen extends ConsumerStatefulWidget {
@@ -12,19 +13,77 @@ class AddPetScreen extends ConsumerStatefulWidget {
 
 class _AddPetScreenState extends ConsumerState<AddPetScreen> {
   final _formKey = GlobalKey<FormState>();
-  String _name = '';
-  String _breed = '';
-  int _age = 0;
-  double _weight = 0.0;
+  
+  final _nameController = TextEditingController();
+  final _breedController = TextEditingController();
+  final _ageController = TextEditingController();
+  final _weightController = TextEditingController();
+  
   bool _isLoading = false;
+  bool _isAutoDetecting = false;
+  
+  // Gamification Loop
+  int _selectedAvatar = 0;
+  final List<String> _avatars = ['🐶', '🐱', '🐰', '🦊', '🐷'];
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _breedController.dispose();
+    _ageController.dispose();
+    _weightController.dispose();
+    super.dispose();
+  }
+
+  void _triggerMagicDetect() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.camera);
+    if (image == null) return;
+    
+    setState(() => _isAutoDetecting = true);
+    try {
+      final client = ref.read(apiClientProvider);
+      final aiData = await client.autoDetectPet(image);
+      
+      setState(() {
+        if (aiData['breed'] != null) {
+          _breedController.text = aiData['breed'].toString();
+        }
+        if (aiData['weight_lbs'] != null) {
+          _weightController.text = aiData['weight_lbs'].toString();
+        }
+        if (aiData['vibe_emoji'] != null) {
+          final emoji = aiData['vibe_emoji'].toString();
+          final index = _avatars.indexOf(emoji);
+          if (index != -1) {
+            _selectedAvatar = index;
+          } else {
+            // Expand array dynamically if AI hallucinates a cool emoji
+            _avatars.add(emoji);
+            _selectedAvatar = _avatars.length - 1;
+          }
+        }
+      });
+      
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('AI auto-filled out the details! 🚀'), backgroundColor: Colors.green));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Magic Detect Failed: $e')));
+    } finally {
+      if (mounted) setState(() => _isAutoDetecting = false);
+    }
+  }
 
   void _submit() async {
     if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
       setState(() => _isLoading = true);
       try {
         final client = ref.read(apiClientProvider);
-        await client.createPet(_name, _breed, _age, _weight);
+        await client.createPet(
+          _nameController.text, 
+          _breedController.text, 
+          int.parse(_ageController.text), 
+          double.parse(_weightController.text)
+        );
         ref.invalidate(petsListProvider);
         if (mounted) Navigator.pop(context);
       } catch (e) {
@@ -49,22 +108,85 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16),
           child: Form(
-            key: _formKey,
+             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text("Let's get started", style: GoogleFonts.plusJakartaSans(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.black, letterSpacing: -1)),
                 const SizedBox(height: 8),
                 Text("We need a few details to configure the AI model.", style: GoogleFonts.plusJakartaSans(color: Colors.grey[600], fontSize: 16)),
-                const SizedBox(height: 48),
+                const SizedBox(height: 32),
                 
-                _buildCleanTextField('Pet Name', (v) => _name = v!, hint: "e.g. Luna"),
+                // MAGIC DETECT BUTTON
+                InkWell(
+                  onTap: _isAutoDetecting ? null : _triggerMagicDetect,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Colors.deepPurpleAccent, Colors.blueAccent], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(color: Colors.deepPurpleAccent.withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 8))
+                      ]
+                    ),
+                    child: Center(
+                      child: _isAutoDetecting 
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 28),
+                                const SizedBox(width: 12),
+                                Text("📸 MAGIC DETECT WITH AI", style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 0.5)),
+                              ],
+                            ),
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 32),
+                
+                // GAMIFIED AVATAR ROW
+                Text("Pick their Vibe", style: GoogleFonts.plusJakartaSans(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 14)),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(_avatars.length, (index) {
+                    final bool isSelected = _selectedAvatar == index;
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedAvatar = index),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.black : Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: isSelected ? Colors.black : const Color(0xFFE2E8F0), width: 2),
+                          boxShadow: isSelected ? const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4))] : [],
+                        ),
+                        child: Center(
+                          child: Text(
+                            _avatars[index],
+                            style: TextStyle(fontSize: isSelected ? 32 : 24),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                
+                const SizedBox(height: 32),
+                
+                _buildCleanTextField('Pet Name', _nameController, hint: "e.g. Luna"),
                 const SizedBox(height: 24),
-                _buildCleanTextField('Breed', (v) => _breed = v!, hint: "e.g. Golden Retriever"),
+                _buildCleanTextField('Breed', _breedController, hint: "e.g. Golden Retriever"),
                 const SizedBox(height: 24),
-                _buildCleanTextField('Age (Months)', (v) => _age = int.parse(v!), isNumber: true, hint: "e.g. 24"),
+                _buildCleanTextField('Age (Months)', _ageController, isNumber: true, hint: "e.g. 24"),
                 const SizedBox(height: 24),
-                _buildCleanTextField('Current Weight (lbs)', (v) => _weight = double.parse(v!), isNumber: true, hint: "e.g. 45.5"),
+                _buildCleanTextField('Current Weight (lbs)', _weightController, isNumber: true, hint: "e.g. 45.5"),
                 const SizedBox(height: 64),
                 
                 _isLoading 
@@ -78,7 +200,7 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
                           decoration: BoxDecoration(
                             color: Colors.black,
                             borderRadius: BorderRadius.circular(32),
-                            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 20, offset: const Offset(0, 10))],
+                            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, 10))],
                           ),
                           child: Center(
                             child: Text('CREATE PROFILE', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: 1.0)),
@@ -93,7 +215,7 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
     );
   }
 
-  Widget _buildCleanTextField(String label, Function(String?) onSave, {bool isNumber = false, String hint = ""}) {
+  Widget _buildCleanTextField(String label, TextEditingController controller, {bool isNumber = false, String hint = ""}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -107,10 +229,10 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 5))],
           ),
           child: TextFormField(
+            controller: controller,
             style: GoogleFonts.plusJakartaSans(color: Colors.black, fontSize: 18, fontWeight: FontWeight.w600),
             keyboardType: isNumber ? TextInputType.number : TextInputType.text,
             validator: (v) => v!.isEmpty ? 'Required' : null,
-            onSaved: onSave,
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: GoogleFonts.plusJakartaSans(color: Colors.grey[400], fontWeight: FontWeight.w500),
