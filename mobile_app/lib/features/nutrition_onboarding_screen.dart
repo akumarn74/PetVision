@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/models.dart';
 import '../core/api_client.dart';
@@ -38,7 +37,7 @@ class _NutritionOnboardingScreenState extends ConsumerState<NutritionOnboardingS
     return Scaffold(
       backgroundColor: const Color(0xFFF0FDF4),
       appBar: AppBar(
-        title: Text("Dietary Baseline", style: GoogleFonts.plusJakartaSans(color: Colors.black, fontWeight: FontWeight.w800)),
+        title: Text("Dietary Baseline", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.black, fontWeight: FontWeight.w800)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
@@ -48,12 +47,12 @@ class _NutritionOnboardingScreenState extends ConsumerState<NutritionOnboardingS
           padding: const EdgeInsets.all(24.0),
           physics: const BouncingScrollPhysics(),
           children: [
-            Text("Set the Baseline", style: GoogleFonts.plusJakartaSans(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -1)),
+            Text("Set the Baseline", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -1)),
               const SizedBox(height: 8),
-              Text("Our AI calculates an exact caloric target mapped directly to ${widget.pet.name}'s breed profile.", style: GoogleFonts.plusJakartaSans(fontSize: 16, color: Colors.grey[700], height: 1.4)),
+              Text("Our AI calculates an exact caloric target mapped directly to ${widget.pet.name}'s breed profile.", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, color: Colors.grey[700], height: 1.4)),
               const SizedBox(height: 32),
               
-              Text("Activity Level", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+              Text("Activity Level", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
               const SizedBox(height: 12),
               _buildSelector("couch_potato", "Couch Potato", "Mostly sleeps. Short walks.", _selectedActivity, (v) => setState(() => _selectedActivity = v)),
               const SizedBox(height: 8),
@@ -62,7 +61,7 @@ class _NutritionOnboardingScreenState extends ConsumerState<NutritionOnboardingS
               _buildSelector("active", "Highly Active", "Working dog / running companion.", _selectedActivity, (v) => setState(() => _selectedActivity = v)),
               
               const SizedBox(height: 32),
-              Text("Dietary Goal", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+              Text("Dietary Goal", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
               const SizedBox(height: 12),
               _buildSelector("lose_weight", "Lose Weight", "Create a caloric deficit.", _selectedGoal, (v) => setState(() => _selectedGoal = v)),
               const SizedBox(height: 8),
@@ -87,7 +86,7 @@ class _NutritionOnboardingScreenState extends ConsumerState<NutritionOnboardingS
                   child: Center(
                     child: _isProcessing 
                       ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
-                      : Text('GENERATE CALORIE BUDGET', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.0)),
+                      : Text('GENERATE CALORIE BUDGET', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.0)),
                   ),
                 ),
               ),
@@ -118,8 +117,8 @@ class _NutritionOnboardingScreenState extends ConsumerState<NutritionOnboardingS
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
-                  Text(subtitle, style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey[600])),
+                  Text(title, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
+                  Text(subtitle, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 13, color: Colors.grey[600])),
                 ],
               ),
             )

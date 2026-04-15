@@ -1,0 +1,54 @@
+name: PetVision Monorepo CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  backend-deploy:
+    name: Build & Deploy FastAPI to Google Cloud Run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Submit Cloud Build
+        run: |
+          gcloud builds submit --config cloudbuild.yaml .
+
+  mobile-deploy:
+    name: Build, Test & Release Flutter Apps
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.x'
+          channel: 'stable'
+
+      - name: Install Mobile Dependencies
+        run: cd mobile_app && flutter pub get
+
+      - name: Static Analysis
+        run: cd mobile_app && flutter analyze
+
+      - name: Build iOS IPA (TestFlight)
+        run: cd mobile_app && flutter build ipa --export-options-plist=ExportOptions.plist
+        # Note: Requires Apple provisioning profiles mounted dynamically in Secrets
+
+      - name: Build Android App Bundle
+        run: cd mobile_app && flutter build appbundle
+        # Note: Output goes directly to Google Play Console via Fastlane

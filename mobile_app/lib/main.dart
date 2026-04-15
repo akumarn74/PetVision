@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'features/home_screen.dart';
 import 'features/auth_screen.dart';
 import 'core/api_client.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   // Overarching Riverpod scope.
@@ -20,14 +21,7 @@ class PetVisionApp extends ConsumerWidget {
     return MaterialApp(
       title: 'PetVision AI',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        fontFamily: 'Inter',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF02569B),
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-      ),
+      theme: PetVisionTheme.lightTheme,
       // If token is null, block the application routing.
       home: token == null ? const AuthScreen() : const HomeScreen(),
     );

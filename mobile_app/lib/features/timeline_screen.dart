@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../domain/models.dart';
 import '../core/api_client.dart';
 import 'camera_screen.dart';
@@ -30,7 +29,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
-        title: Text('${widget.pet.name}\'s Health Trends', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: Colors.black, fontSize: 18)),
+        title: Text('${widget.pet.name}\'s Health Trends', style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w800, color: Colors.black, fontSize: 18)),
         backgroundColor: const Color(0xFFF9FAFB),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
@@ -39,7 +38,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CameraScreen(pet: widget.pet))),
         backgroundColor: Colors.black,
         icon: const Icon(Icons.camera_alt_rounded, color: Colors.white),
-        label: Text("NEW SCAN", style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+        label: Text("NEW SCAN", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _trendsFuture,
@@ -72,9 +71,9 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Longitudinal AI Engine", style: GoogleFonts.plusJakartaSans(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -1)),
+                      Text("Longitudinal AI Engine", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -1)),
                       const SizedBox(height: 8),
-                      Text("Comparing your most recent scan against the 30-day moving average.", style: GoogleFonts.plusJakartaSans(color: Colors.grey[600], fontSize: 16, height: 1.4)),
+                      Text("Comparing your most recent scan against the 30-day moving average.", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[600], fontSize: 16, height: 1.4)),
                       const SizedBox(height: 32),
 
                       // AI Insights List
@@ -127,7 +126,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                               children: [
                                 const Icon(Icons.medical_information_rounded, color: Colors.blueAccent),
                                 const SizedBox(width: 12),
-                                Text("EXPORT VET REPORT", style: GoogleFonts.plusJakartaSans(color: Colors.blueAccent, fontWeight: FontWeight.w900, fontSize: 16)),
+                                Text("EXPORT VET REPORT", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.blueAccent, fontWeight: FontWeight.w900, fontSize: 16)),
                               ],
                             ),
                           ),
@@ -159,11 +158,11 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
               child: const Icon(Icons.show_chart_rounded, size: 64, color: Colors.blueAccent),
             ),
             const SizedBox(height: 24),
-            Text("AI Trend Engine Initializing", style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black)),
+            Text("AI Trend Engine Initializing", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black)),
             const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center, style: GoogleFonts.plusJakartaSans(color: Colors.grey[600], fontSize: 16, height: 1.5)),
+            Text(message, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[600], fontSize: 16, height: 1.5)),
             const SizedBox(height: 32),
-            Text("Tip: Perform at least two scans separated by a few days to generate longitudinal moving averages.", textAlign: TextAlign.center, style: GoogleFonts.plusJakartaSans(color: Colors.grey[400], fontSize: 14)),
+            Text("Tip: Perform at least two scans separated by a few days to generate longitudinal moving averages.", textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[400], fontSize: 14)),
           ],
         ),
       ),
@@ -175,7 +174,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
       children: [
         Icon(icon, color: Colors.blueAccent, size: 24),
         const SizedBox(width: 12),
-        Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+        Text(title, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
       ],
     );
   }
@@ -195,7 +194,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
         children: [
           const Icon(Icons.bolt, color: Colors.amber, size: 24),
           const SizedBox(width: 16),
-          Expanded(child: Text(text, style: GoogleFonts.plusJakartaSans(color: Colors.black87, fontSize: 15, fontWeight: FontWeight.w600, height: 1.4))),
+          Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.black87, fontSize: 15, fontWeight: FontWeight.w600, height: 1.4))),
         ],
       ),
     );
@@ -291,9 +290,9 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(metric, style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.black87)),
+                          Text(metric, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.black87)),
                           const SizedBox(height: 4),
-                          Text("30-Day Moving Average", style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[500])),
+                          Text("30-Day Moving Average", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[500])),
                         ],
                       ),
                       Container(
@@ -307,7 +306,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                           children: [
                             Text(
                               '${isPositive ? '+' : ''}${delta.toStringAsFixed(1)}%',
-                              style: GoogleFonts.plusJakartaSans(fontSize: 22, fontWeight: FontWeight.w900, color: tickerColor),
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 22, fontWeight: FontWeight.w900, color: tickerColor),
                             ),
                             const SizedBox(width: 8),
                             Icon(tickerIcon, color: tickerColor, size: 20),
@@ -333,7 +332,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                           children: [
                             Icon(Icons.history, color: tickerColor, size: 20),
                             const SizedBox(width: 12),
-                            Expanded(child: Text(contextText, style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.grey[700], height: 1.5, fontWeight: FontWeight.w500))),
+                            Expanded(child: Text(contextText, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 14, color: Colors.grey[700], height: 1.5, fontWeight: FontWeight.w500))),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -344,7 +343,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                           children: [
                             Icon(Icons.insights, color: Colors.amber.shade600, size: 20),
                             const SizedBox(width: 12),
-                            Expanded(child: Text(trajectoryTip, style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w700, height: 1.5))),
+                            Expanded(child: Text(trajectoryTip, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w700, height: 1.5))),
                           ],
                         ),
                         if (affiliateCta != null) affiliateCta,
@@ -380,7 +379,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
             border: Border.all(color: color.withValues(alpha: 0.5)),
           ),
           child: Center(
-            child: Text(label, style: GoogleFonts.plusJakartaSans(color: color.shade700, fontWeight: FontWeight.bold, fontSize: 13)),
+            child: Text(label, style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: color.shade700, fontWeight: FontWeight.bold, fontSize: 13)),
           ),
         ),
       ),
@@ -402,7 +401,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Vet Context Report", style: GoogleFonts.plusJakartaSans(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -0.5)),
+                Text("Vet Context Report", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -0.5)),
                 IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context))
               ],
             ),
@@ -429,7 +428,7 @@ class _TimelineScreenState extends ConsumerState<TimelineScreen> {
                   ),
                   child: Text(
                     snapshot.data ?? "Report unavailable.",
-                    style: GoogleFonts.plusJakartaSans(color: Colors.black87, fontSize: 16, height: 1.6, fontWeight: FontWeight.w500)
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.black87, fontSize: 16, height: 1.6, fontWeight: FontWeight.w500)
                   ),
                 );
               }

@@ -118,17 +118,33 @@ async def join_pet_household(
     await db.commit()
     return {"message": f"Successfully joined {pet.name}'s household!"}
 
+from sqlalchemy import func
+
 @router.delete("/pets/{pet_id}")
 async def delete_pet(
     pet_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: UserAccount = Depends(get_current_user)
 ):
-    """Deletes a pet entirely securely enforcing ownership."""
+    """Safely unlinks a user from a pet household, conditionally cascading deletion if they are the last owner."""
     await verify_pet_ownership(pet_id, current_user.id, db)
-    await db.execute(delete(PetProfile).where(PetProfile.id == pet_id))
+    
+    # 1. Unlink this specific user from the Household
+    await db.execute(delete(PetHouseholdLink).where(PetHouseholdLink.pet_id == pet_id, PetHouseholdLink.user_id == current_user.id))
     await db.commit()
-    return {"message": "Pet deleted successfully."}
+    
+    # 2. Check remaining owners
+    count_query = select(func.count(PetHouseholdLink.id)).where(PetHouseholdLink.pet_id == pet_id)
+    count_result = await db.execute(count_query)
+    remaining = count_result.scalar() or 0
+    
+    # 3. If nobody is left in the household, safely execute the master wipe
+    if remaining == 0:
+        await db.execute(delete(PetProfile).where(PetProfile.id == pet_id))
+        await db.commit()
+        return {"message": "Pet entirely deleted from system.", "remaining_owners": 0}
+        
+    return {"message": "You have left the pet's household successfully.", "remaining_owners": remaining}
 
 async def verify_pet_ownership(pet_id: uuid.UUID, owner_id: uuid.UUID, db: AsyncSession):
     # Co-parenting authorization: Must exist in Household Link
@@ -327,8 +343,20 @@ async def log_pet_meal(
     profile_query = select(PetProfile).where(PetProfile.id == pet_id)
     profile = (await db.execute(profile_query)).scalar_one_or_none()
     
-    # 2. Rip NLP context to JSON
-    macros = await parse_unstructured_meal_to_json(data.raw_text, profile.name, profile.breed, profile.baseline_weight)
+    # 2. Rip NLP context to JSON (Check Semantic Cache First)
+    clean_query = data.raw_text.strip().lower()
+    semantic_cache_query = select(DietEntry).where(DietEntry.raw_query.ilike(clean_query)).limit(1)
+    cached_entry = (await db.execute(semantic_cache_query)).scalar_one_or_none()
+    
+    if cached_entry:
+        macros = {
+            "food_name": cached_entry.food_name,
+            "calories": float(cached_entry.calories),
+            "proteins_g": float(cached_entry.proteins_g),
+            "fats_g": float(cached_entry.fats_g)
+        }
+    else:
+        macros = await parse_unstructured_meal_to_json(data.raw_text, profile.name, profile.breed, profile.baseline_weight)
     
     # 3. Save
     entry = DietEntry(

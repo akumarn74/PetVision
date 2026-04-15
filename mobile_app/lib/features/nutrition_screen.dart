@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../domain/models.dart';
@@ -46,22 +45,7 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
     super.dispose();
   }
 
-  void _onSearchChanged(String query) {
-    if (_debounce?.isActive ?? false) _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () async {
-      if (query.isEmpty) {
-        setState(() => _searchResults = []);
-        return;
-      }
-      setState(() => _isSearching = true);
-      try {
-        final results = await ref.read(apiClientProvider).searchPredefinedFoods(query);
-        if (mounted) setState(() => _searchResults = results);
-      } finally {
-        if (mounted) setState(() => _isSearching = false);
-      }
-    });
-  }
+
 
   Future<void> _triggerSuccessLottie() async {
     showDialog(
@@ -187,8 +171,10 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                 color: Colors.white,
                 borderRadius: BorderRadius.only(topLeft: Radius.circular(32), topRight: Radius.circular(32)),
               ),
-              child: Column(
-                children: [
+              child: SafeArea(
+                bottom: true,
+                child: Column(
+                  children: [
                    const SizedBox(height: 12),
                    Container(width: 40, height: 6, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
                    const SizedBox(height: 24),
@@ -197,7 +183,7 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                      child: TextField(
                         controller: _searchController,
                         onChanged: onModalSearch,
-                        style: GoogleFonts.plusJakartaSans(fontSize: 18),
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18),
                         autofocus: true,
                         decoration: InputDecoration(
                           hintText: "Search food database...",
@@ -227,13 +213,14 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                          ),
                    )
                 ]
-              )
-            );
-          }
-        );
-      }
-    );
-  }
+              ),
+            ),
+          );
+        }
+      );
+    }
+  );
+}
 
   Widget _buildModalIdleView() {
     return ListView(
@@ -256,8 +243,8 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("Snap AI Meal", style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
-                      Text("Let GPT-4o Vision calculate macros.", style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 14)),
+                      Text("Snap AI Meal", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                      Text("Let GPT-4o Vision calculate macros.", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white70, fontSize: 14)),
                     ],
                   ),
                 )
@@ -266,7 +253,7 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        Text("Popular Foods", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 16)),
+        Text("Popular Foods", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 16)),
         const SizedBox(height: 12),
         FutureBuilder<List<FoodCatalogItem>>(
           future: ref.read(apiClientProvider).searchPredefinedFoods(""),
@@ -275,16 +262,16 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                return const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()));
             }
             if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-               return Center(child: Text("Or type a custom meal description to use standard NLP.", style: GoogleFonts.plusJakartaSans(color: Colors.grey, fontSize: 13)));
+               return Center(child: Text("Or type a custom meal description to use standard NLP.", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey, fontSize: 13)));
             }
             final popularFoods = snapshot.data!.take(5).toList();
             return Column(
               children: popularFoods.map((food) => ListTile(
                 contentPadding: const EdgeInsets.symmetric(vertical: 4),
                 leading: CircleAvatar(backgroundColor: Colors.grey.shade100, child: const Icon(Icons.star, color: Colors.amber)),
-                title: Text(food.name, style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold)),
-                subtitle: Text("${food.brand} • ${food.servingSizeDesc}", style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.black54)),
-                trailing: Text("${food.caloriesPerServing} kcal", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w900, color: Colors.orange.shade700)),
+                title: Text(food.name, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+                subtitle: Text("${food.brand} • ${food.servingSizeDesc}", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 13, color: Colors.black54)),
+                trailing: Text("${food.caloriesPerServing} kcal", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w900, color: Colors.orange.shade700)),
                 onTap: () => _logPredefinedMeal(food.id),
               )).toList(),
             );
@@ -296,7 +283,7 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
 
   Widget _buildModalSearchResults() {
     if (_searchResults.isEmpty) {
-        return Center(child: Text("No exact matches. Hit 'Enter' to use AI Text Parser.", style: GoogleFonts.plusJakartaSans(color: Colors.black54)));
+        return Center(child: Text("No exact matches. Hit 'Enter' to use AI Text Parser.", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.black54)));
     }
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -306,9 +293,9 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
          return ListTile(
             contentPadding: const EdgeInsets.symmetric(vertical: 8),
             leading: CircleAvatar(backgroundColor: Colors.grey.shade100, child: const Icon(Icons.fastfood, color: Colors.black54)),
-            title: Text(food.name, style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold)),
-            subtitle: Text("${food.brand} • ${food.servingSizeDesc}", style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.black54)),
-            trailing: Text("${food.caloriesPerServing} kcal", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w900, color: Colors.green)),
+            title: Text(food.name, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+            subtitle: Text("${food.brand} • ${food.servingSizeDesc}", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 13, color: Colors.black54)),
+            trailing: Text("${food.caloriesPerServing} kcal", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w900, color: Colors.green)),
             onTap: () => _logPredefinedMeal(food.id),
          );
       }
@@ -321,7 +308,7 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
       backgroundColor: const Color(0xFFF9FAFB), // Apple UI off-white
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('${widget.pet.name}\'s Nutrition', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: Colors.black, fontSize: 18)),
+        title: Text('${widget.pet.name}\'s Nutrition', style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w800, color: Colors.black, fontSize: 18)),
         backgroundColor: Colors.white.withValues(alpha: 0.8),
         flexibleSpace: ClipRect(child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), child: Container(color: Colors.transparent))),
         elevation: 0,
@@ -339,7 +326,7 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
           focusElevation: 0,
           highlightElevation: 0,
           icon: _isLogging ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color:Colors.black)) : const Icon(Icons.add_rounded, color: Colors.black, size: 28),
-          label: Text("LOG MEAL", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.black)),
+          label: Text("LOG MEAL", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w900, fontSize: 15, color: Colors.black)),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -393,13 +380,13 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                           Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(todayKcal.toStringAsFixed(0), style: GoogleFonts.plusJakartaSans(fontSize: 64, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -3)),
-                              Text("KCAL EATEN", style: GoogleFonts.plusJakartaSans(color: Colors.grey.shade500, fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 1.2)),
+                              Text(todayKcal.toStringAsFixed(0), style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -1)),
+                              Text("KCAL EATEN", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey.shade500, fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 1.2)),
                               const SizedBox(height: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                 decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(12)),
-                                child: Text('REMAINING: ${(targetKcal - todayKcal > 0 ? targetKcal - todayKcal : 0).toStringAsFixed(0)}', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                                child: Text('REMAINING: ${(targetKcal - todayKcal > 0 ? targetKcal - todayKcal : 0).toStringAsFixed(0)}', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
                               )
                             ],
                           )
@@ -428,11 +415,11 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                            children: [
                              const Icon(Icons.auto_awesome, color: Colors.green, size: 20),
                              const SizedBox(width: 8),
-                             Text("AI Recommendation", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w900, color: Colors.green.shade800)),
+                             Text("AI Recommendation", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w900, color: Colors.green.shade800)),
                            ],
                         ),
                         const SizedBox(height: 12),
-                        Text(recommendation, style: GoogleFonts.plusJakartaSans(height: 1.5, fontSize: 15, color: Colors.black87, fontWeight: FontWeight.w600)),
+                        Text(recommendation, style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5, fontSize: 15, color: Colors.black87, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -443,7 +430,7 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Text("Log History", style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.bold)),
+                  child: Text("Log History", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.bold)),
                 ),
               ),
 
@@ -451,7 +438,7 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                  SliverToBoxAdapter(
                     child: Padding(
                        padding: const EdgeInsets.all(40),
-                       child: Center(child: Text("No meals logged today. Time to eat!", style: GoogleFonts.plusJakartaSans(color: Colors.grey.shade400, fontSize: 16))),
+                       child: Center(child: Text("No meals logged today. Time to eat!", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey.shade400, fontSize: 16))),
                     )
                  )
               else
@@ -499,16 +486,16 @@ class _NutritionScreenState extends ConsumerState<NutritionScreen> {
                                           child: Column(
                                              crossAxisAlignment: CrossAxisAlignment.start,
                                              children: [
-                                                Text(m["food_name"], style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                                Text(m["food_name"], style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
                                                 const SizedBox(height: 4),
-                                                Text("Protein: ${m["proteins_g"]}g  |  Fats: ${m["fats_g"]}g", style: GoogleFonts.plusJakartaSans(color: Colors.blue.shade700, fontSize: 12, fontWeight: FontWeight.bold)),
+                                                Text("Protein: ${m["proteins_g"]}g  |  Fats: ${m["fats_g"]}g", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.blue.shade700, fontSize: 12, fontWeight: FontWeight.bold)),
                                              ],
                                           )
                                        ),
                                        Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                           decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(16)),
-                                          child: Text('${m['calories']} kcal', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                                          child: Text('${m['calories']} kcal', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
                                        )
                                     ],
                                  ),

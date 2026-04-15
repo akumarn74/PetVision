@@ -1,5 +1,5 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/api_client.dart';
 import '../domain/models.dart';
@@ -17,131 +17,184 @@ class LeaderboardScreen extends ConsumerWidget {
     final leaderboardAsync = ref.watch(leaderboardProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC), // Off-white luxury background
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
-        title: Text("Global Rankings", style: GoogleFonts.plusJakartaSans(color: Colors.black, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
-        centerTitle: true,
-      ),
-      body: leaderboardAsync.when(
-        data: (pets) {
-          if (pets.isEmpty) {
-             return const Center(child: Text("No data. Be the first!"));
-          }
-          final top3 = pets.take(3).toList();
-          final theRest = pets.skip(3).toList();
-
-          return CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(child: _buildPodium(top3)),
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final pet = theRest[index];
-                      // Rank is index + 3 + 1
-                      return _buildLeaderboardTile(pet, index + 4);
-                    },
-                    childCount: theRest.length,
+      backgroundColor: const Color(0xFFF4F6F8), // Deep premium off-white
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // Dynamic Header
+          SliverAppBar(
+            expandedHeight: 120.0,
+            floating: false,
+            pinned: true,
+            backgroundColor: const Color(0xFFF4F6F8),
+            elevation: 0,
+            iconTheme: const IconThemeData(color: Colors.black),
+            flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
+              title: Text(
+                "Global Rankings",
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.black, fontWeight: FontWeight.w900, letterSpacing: -0.5, fontSize: 24),
+              ),
+              background: Stack(
+                children: [
+                  Positioned(
+                    top: -50, right: -50,
+                    child: Container(
+                      width: 150, height: 150,
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.amber.shade200.withValues(alpha: 0.5)),
+                    ),
+                  ),
+                  Positioned(
+                     top: 40, left: -20,
+                     child: Container(
+                         width: 100, height: 100,
+                         decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.purpleAccent.withValues(alpha: 0.1)),
+                     )
                   )
-                ),
-              )
-            ],
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator(color: Colors.black)),
-        error: (err, stack) => Center(child: Text("Failed to load rankings: $err")),
+                ],
+              ),
+            ),
+          ),
+          
+          leaderboardAsync.when(
+            data: (pets) {
+              if (pets.isEmpty) {
+                 return SliverFillRemaining(child: Center(child: Text("No entries yet. Be the first to log nutrition!", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.black54))));
+              }
+              final top3 = pets.take(3).toList();
+              final theRest = pets.skip(3).toList();
+
+              return SliverToBoxAdapter(
+                 child: Column(
+                    children: [
+                       if (top3.isNotEmpty) _buildStunningPodium(context, top3),
+                       const SizedBox(height: 24),
+                       // Rankings Sheet
+                       Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                          decoration: BoxDecoration(
+                             color: Colors.white,
+                             borderRadius: const BorderRadius.only(topLeft: Radius.circular(40), topRight: Radius.circular(40)),
+                             boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 30, offset: Offset(0, -10))]
+                          ),
+                          child: Column(
+                             crossAxisAlignment: CrossAxisAlignment.stretch,
+                             children: [
+                                Text("All Challengers", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+                                const SizedBox(height: 24),
+                                ...theRest.asMap().entries.map((entry) {
+                                  int index = entry.key;
+                                  PetProfile pet = entry.value;
+                                  return _buildPremiumTile(context, pet, index + 4);
+                                })
+                             ],
+                          ),
+                       )
+                    ],
+                 ),
+              );
+            },
+            loading: () => const SliverFillRemaining(child: Center(child: CircularProgressIndicator(color: Colors.black))),
+            error: (err, stack) => SliverFillRemaining(child: Center(child: Text("Error syncing data: $err"))),
+          )
+        ],
       )
     );
   }
 
-  Widget _buildPodium(List<PetProfile> top3) {
+  Widget _buildStunningPodium(BuildContext context, List<PetProfile> top3) {
     return Padding(
-      padding: const EdgeInsets.only(top: 24.0, bottom: 32.0),
+      padding: const EdgeInsets.only(top: 16.0, bottom: 8.0, left: 16, right: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-           if (top3.length > 1) _buildPodiumColumn(top3[1], 2, Colors.grey.shade400, 140),
-           if (top3.isNotEmpty) _buildPodiumColumn(top3[0], 1, Colors.amber.shade400, 180),
-           if (top3.length > 2) _buildPodiumColumn(top3[2], 3, Colors.brown.shade300, 110),
+           if (top3.length > 1) Expanded(child: _buildPillar(context: context, pet: top3[1], rank: 2, height: 160, colors: [Colors.grey.shade300, Colors.grey.shade400], crown: "🥈")),
+           if (top3.isNotEmpty) Expanded(child: _buildPillar(context: context, pet: top3[0], rank: 1, height: 210, colors: [const Color(0xFFFFD700), const Color(0xFFFFA500)], crown: "👑")),
+           if (top3.length > 2) Expanded(child: _buildPillar(context: context, pet: top3[2], rank: 3, height: 130, colors: [Colors.brown.shade300, Colors.brown.shade500], crown: "🥉")),
         ],
       ),
     );
   }
 
-  Widget _buildPodiumColumn(PetProfile pet, int rank, Color crownColor, double height) {
+  Widget _buildPillar({required BuildContext context, required PetProfile pet, required int rank, required double height, required List<Color> colors, required String crown}) {
+    final isFirst = rank == 1;
     return Column(
       children: [
-        Stack(
-          alignment: Alignment.topRight,
-          children: [
-            CircleAvatar(
-              radius: 36,
-              backgroundColor: crownColor.withValues(alpha: 0.2),
-              child: const Text('🐶', style: TextStyle(fontSize: 32)),
-            ),
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(color: crownColor, shape: BoxShape.circle),
-              child: Text('$rank', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
-            )
-          ]
-        ),
-        const SizedBox(height: 12),
-        Text(pet.name, style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 16)),
-        Text('${pet.xpPoints} XP', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: crownColor, fontSize: 14)),
-        const SizedBox(height: 12),
+        Text(crown, style: TextStyle(fontSize: isFirst ? 40 : 28)),
+        const SizedBox(height: 8),
         Container(
-          width: 80,
-          height: height,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), topRight: Radius.circular(16)),
-            boxShadow: [BoxShadow(color: crownColor.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, -5))]
-          ),
+           padding: const EdgeInsets.all(4),
+           decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(colors: colors, begin: Alignment.topLeft, end: Alignment.bottomRight),
+              boxShadow: [BoxShadow(color: colors.last.withValues(alpha: 0.4), blurRadius: 16, offset: const Offset(0, 8))]
+           ),
+           child: CircleAvatar(
+              radius: isFirst ? 42 : 34,
+              backgroundColor: Colors.white,
+              child: const Text('🐶', style: TextStyle(fontSize: 32)),
+           ),
+        ),
+        const SizedBox(height: 16),
+        Text(pet.name, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w900, fontSize: isFirst ? 18 : 15, color: Colors.black)),
+        Text('${pet.xpPoints} XP', style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: colors.last, fontSize: 13)),
+        const SizedBox(height: 12),
+        // Glassmorphic Pillar
+        Container(
+           margin: const EdgeInsets.symmetric(horizontal: 12),
+           height: height,
+           width: double.infinity,
+           decoration: BoxDecoration(
+              gradient: LinearGradient(
+                 begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                 colors: [
+                    colors.first.withValues(alpha: 0.9),
+                    colors.last.withValues(alpha: 0.7),
+                 ]
+              ),
+              borderRadius: const BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
+              boxShadow: [BoxShadow(color: colors.last.withValues(alpha: 0.3), blurRadius: 24, offset: const Offset(0, -5))]
+           ),
+           child: Center(
+              child: Text(rank.toString(), style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: isFirst ? 36 : 28, fontWeight: FontWeight.w900, color: Colors.white.withValues(alpha: 0.4)))
+           ),
         )
       ],
     );
   }
 
-  Widget _buildLeaderboardTile(PetProfile pet, int rank) {
+  Widget _buildPremiumTile(BuildContext context, PetProfile pet, int rank) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4))]
+        border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4))]
       ),
       child: Row(
         children: [
-          Container(
-             width: 40, height: 40,
-             decoration: BoxDecoration(color: const Color(0xFFF1F5F9), shape: BoxShape.circle),
-             child: Center(child: Text('#$rank', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, color: Colors.grey.shade600))),
-          ),
-          const SizedBox(width: 16),
+          Text('#$rank', style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.grey.shade400)),
+          const SizedBox(width: 20),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(pet.name, style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
-                Text(pet.breed, style: GoogleFonts.plusJakartaSans(color: Colors.grey.shade500, fontSize: 13)),
+                Text(pet.name, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w900, fontSize: 18, color: Colors.black)),
+                Text(pet.breed, style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey.shade500, fontWeight: FontWeight.w600, fontSize: 13)),
               ],
             )
           ),
           Container(
-             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16)
+                gradient: const LinearGradient(colors: [Color(0xFFFE8C00), Color(0xFFF83600)]),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: const [BoxShadow(color: Color(0xFFFE8C00), blurRadius: 10, offset: Offset(0, 4))]
              ),
-             child: Text('${pet.xpPoints} XP', style: GoogleFonts.plusJakartaSans(color: Colors.orange.shade800, fontWeight: FontWeight.bold)),
+             child: Text('${pet.xpPoints} XP', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14, letterSpacing: 0.5)),
           )
         ],
       )

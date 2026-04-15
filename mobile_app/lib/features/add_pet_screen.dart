@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../core/api_client.dart';
 
@@ -81,8 +81,8 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
         await client.createPet(
           _nameController.text, 
           _breedController.text, 
-          int.parse(_ageController.text), 
-          double.parse(_weightController.text)
+          int.tryParse(_ageController.text) ?? 0, 
+          double.tryParse(_weightController.text) ?? 0.0
         );
         ref.invalidate(petsListProvider);
         if (mounted) Navigator.pop(context);
@@ -97,12 +97,11 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9FAFB),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('New Pet Profile', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800, color: Colors.black, fontSize: 20)),
-        backgroundColor: const Color(0xFFF9FAFB),
+        title: Text('New Pet Profile', style: Theme.of(context).textTheme.headlineMedium),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -112,10 +111,10 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Let's get started", style: GoogleFonts.plusJakartaSans(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.black, letterSpacing: -1)),
-                const SizedBox(height: 8),
-                Text("We need a few details to configure the AI model.", style: GoogleFonts.plusJakartaSans(color: Colors.grey[600], fontSize: 16)),
-                const SizedBox(height: 32),
+                Text("Let's get started", style: Theme.of(context).textTheme.displayMedium),
+                SizedBox(height: MediaQuery.of(context).size.height * 0.01),
+                Text("We need a few details to configure the AI model.", style: Theme.of(context).textTheme.bodyLarge),
+                SizedBox(height: MediaQuery.of(context).size.height * 0.03),
                 
                 // MAGIC DETECT BUTTON
                 InkWell(
@@ -139,7 +138,7 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
                               children: [
                                 const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 28),
                                 const SizedBox(width: 12),
-                                Text("📸 MAGIC DETECT WITH AI", style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 0.5)),
+                                Text("📸 MAGIC DETECT WITH AI", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
                               ],
                             ),
                     ),
@@ -149,7 +148,7 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
                 const SizedBox(height: 32),
                 
                 // GAMIFIED AVATAR ROW
-                Text("Pick their Vibe", style: GoogleFonts.plusJakartaSans(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 14)),
+                Text("Pick their Vibe", style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.black87)),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -203,7 +202,7 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
                             boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, 10))],
                           ),
                           child: Center(
-                            child: Text('CREATE PROFILE', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: 1.0)),
+                            child: Text('CREATE PROFILE', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w800, letterSpacing: 1.0)),
                           ),
                         ),
                       ),
@@ -219,7 +218,7 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.plusJakartaSans(color: Colors.black87, fontWeight: FontWeight.w700, fontSize: 14)),
+        Text(label, style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Colors.black87)),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
@@ -230,12 +229,13 @@ class _AddPetScreenState extends ConsumerState<AddPetScreen> {
           ),
           child: TextFormField(
             controller: controller,
-            style: GoogleFonts.plusJakartaSans(color: Colors.black, fontSize: 18, fontWeight: FontWeight.w600),
-            keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+            keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
+            inputFormatters: isNumber ? [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))] : [],
             validator: (v) => v!.isEmpty ? 'Required' : null,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: GoogleFonts.plusJakartaSans(color: Colors.grey[400], fontWeight: FontWeight.w500),
+              hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[400], fontWeight: FontWeight.w500),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             ),

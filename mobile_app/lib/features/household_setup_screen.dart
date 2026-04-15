@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../core/api_client.dart';
 import 'add_pet_screen.dart';
@@ -46,7 +45,7 @@ class _HouseholdSetupScreenState extends ConsumerState<HouseholdSetupScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black),
-        title: Text("Household Setup", style: GoogleFonts.plusJakartaSans(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text("Household Setup", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 18)),
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -54,9 +53,9 @@ class _HouseholdSetupScreenState extends ConsumerState<HouseholdSetupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Add a Pet to Your Account", style: GoogleFonts.plusJakartaSans(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -1, height: 1.2)),
+              Text("Add a Pet to Your Account", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -1, height: 1.2)),
               const SizedBox(height: 12),
-              Text("Are you creating a brand new profile, or joining an existing pet's household?", style: GoogleFonts.plusJakartaSans(fontSize: 16, color: Colors.grey.shade600, height: 1.5)),
+              Text("Are you creating a brand new profile, or joining an existing pet's household?", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, color: Colors.grey.shade600, height: 1.5)),
               const SizedBox(height: 40),
               
               // Option 1: Primary Owner (Create New)
@@ -84,9 +83,9 @@ class _HouseholdSetupScreenState extends ConsumerState<HouseholdSetupScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text("Create New Profile", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+                            Text("Create New Profile", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
                             const SizedBox(height: 4),
-                            Text("I am the primary owner establishing a new pet AI profile.", style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.grey.shade600, height: 1.4)),
+                            Text("I am the primary owner establishing a new pet AI profile.", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 14, color: Colors.grey.shade600, height: 1.4)),
                           ],
                         )
                       ),
@@ -102,7 +101,7 @@ class _HouseholdSetupScreenState extends ConsumerState<HouseholdSetupScreen> {
                    Expanded(child: Container(height: 1, color: Colors.grey.shade300)),
                    Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text("OR", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, color: Colors.grey.shade500)),
+                      child: Text("OR", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: Colors.grey.shade500)),
                    ),
                    Expanded(child: Container(height: 1, color: Colors.grey.shade300)),
                 ],
@@ -133,9 +132,9 @@ class _HouseholdSetupScreenState extends ConsumerState<HouseholdSetupScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Join Co-Parent", style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
+                              Text("Join Co-Parent", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
                               const SizedBox(height: 4),
-                              Text("Join a pet heavily tracked by your partner.", style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.grey.shade600)),
+                              Text("Join a pet heavily tracked by your partner.", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 14, color: Colors.grey.shade600)),
                             ],
                           )
                         ),
@@ -150,19 +149,19 @@ class _HouseholdSetupScreenState extends ConsumerState<HouseholdSetupScreen> {
                           children: [
                              const Icon(Icons.info_outline, color: Colors.orange, size: 20),
                              const SizedBox(width: 12),
-                             Expanded(child: Text("Ask your partner to open their PetVision Home Screen. The 6-digit invite code is displayed directly on the Pet's Hero Card.", style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.orange.shade900, height: 1.5, fontWeight: FontWeight.w600)))
+                             Expanded(child: Text("Ask your partner to open their PetVision Home Screen. The 6-digit invite code is displayed directly on the Pet's Hero Card.", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 13, color: Colors.orange.shade900, height: 1.5, fontWeight: FontWeight.w600)))
                           ],
                        )
                     ),
                     const SizedBox(height: 24),
-                    Text("Enter Invite Code", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87)),
+                    Text("Enter Invite Code", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87)),
                     const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
                           child: TextField(
                             onChanged: (val) => joinCode = val,
-                            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: 4.0),
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w900, fontSize: 20, letterSpacing: 4.0),
                             maxLength: 6,
                             textAlign: TextAlign.center,
                             keyboardType: TextInputType.text,
@@ -192,7 +191,7 @@ class _HouseholdSetupScreenState extends ConsumerState<HouseholdSetupScreen> {
                              elevation: 0
                           ),
                           onPressed: isJoining ? null : submitJoinCode,
-                          child: isJoining ? const CircularProgressIndicator(color: Colors.white) : Text("Connect to Household", style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15))
+                          child: isJoining ? const CircularProgressIndicator(color: Colors.white) : Text("Connect to Household", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15))
                        )
                     )
                   ],

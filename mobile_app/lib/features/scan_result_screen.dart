@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../domain/models.dart';
 import '../core/api_client.dart';
 import 'timeline_screen.dart';
@@ -64,7 +63,9 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
     if (widget.result.rawDetections != null) {
       try {
          rawJson = json.decode(widget.result.rawDetections!);
-      } catch(e) {}
+      } catch(e) {
+         print("JSON Error: $e");
+      }
     }
     
     if (metric == "Body Condition") return rawJson["body_condition_analysis"] ?? "Status Pending: AI data unavailable for this vector.";
@@ -107,7 +108,7 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
                     children: [
                       const Icon(Icons.psychology, color: Colors.blueAccent, size: 28),
                       const SizedBox(width: 8),
-                      Text("AI Veterinary Synthesis", style: GoogleFonts.plusJakartaSans(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.black, letterSpacing: -0.5)),
+                      Text("AI Veterinary Synthesis", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.black, letterSpacing: -0.5)),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -116,7 +117,7 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
                   _buildLLMInsightsBox(),
                   
                   const SizedBox(height: 48),
-                  Text("AI Diagnostic Breakdown", style: GoogleFonts.plusJakartaSans(fontSize: 22, fontWeight: FontWeight.bold)),
+                  Text("AI Diagnostic Breakdown", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 22, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   
                   // Vertical Feed of Metrics
@@ -156,7 +157,7 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
                           children: [
                             const Icon(Icons.camera_alt_outlined, color: Colors.white),
                             const SizedBox(width: 12),
-                            Text('SHARE TO INSTAGRAM', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.0)),
+                            Text('SHARE TO INSTAGRAM', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.0)),
                           ],
                         ),
                       ),
@@ -182,7 +183,7 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
                         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, 10))],
                       ),
                       child: Center(
-                        child: Text('FINALIZE RECORD', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: 1.0)),
+                        child: Text('FINALIZE RECORD', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: 1.0)),
                       ),
                     ),
                   ),
@@ -206,7 +207,7 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text("Overall System Score", style: GoogleFonts.plusJakartaSans(color: Colors.grey[500], fontSize: 16, fontWeight: FontWeight.w600)),
+            Text("Overall System Score", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[500], fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 16),
             Stack(
               alignment: Alignment.center,
@@ -232,10 +233,10 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
                     AnimatedBuilder(
                       animation: _progressAnimation,
                       builder: (context, child) {
-                        return Text((_progressAnimation.value * 100).toInt().toString(), style: GoogleFonts.plusJakartaSans(fontSize: 48, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -2));
+                        return Text((_progressAnimation.value * 100).toInt().toString(), style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -2));
                       }
                     ),
-                    Text("out of 100", style: GoogleFonts.plusJakartaSans(color: Colors.grey[400], fontWeight: FontWeight.bold)),
+                    Text("out of 100", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[400], fontWeight: FontWeight.bold)),
                   ],
                 )
               ],
@@ -264,16 +265,16 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
               children: [
                 const LinearProgressIndicator(color: Colors.blueAccent, backgroundColor: Color(0xFFEFF6FF)),
                 const SizedBox(height: 16),
-                Text("Analyzing 6m longitudinal vector data...", style: GoogleFonts.plusJakartaSans(color: Colors.grey[500], fontStyle: FontStyle.italic)),
+                Text("Analyzing 6m longitudinal vector data...", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[500], fontStyle: FontStyle.italic)),
               ],
             );
           }
           if (snapshot.hasError) {
-            return Text("AI Engine disconnected. Attempting to fall back to static metrics.", style: GoogleFonts.plusJakartaSans(color: Colors.redAccent));
+            return Text("AI Engine disconnected. Attempting to fall back to static metrics.", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.redAccent));
           }
           return Text(
             snapshot.data ?? "Report unavailable.",
-            style: GoogleFonts.plusJakartaSans(color: const Color(0xFF1E293B), fontSize: 16, height: 1.6, fontWeight: FontWeight.w500),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: const Color(0xFF1E293B), fontSize: 16, height: 1.6, fontWeight: FontWeight.w500),
           );
         },
       ),
@@ -353,9 +354,9 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(title, style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                              Text(title, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
                               const SizedBox(height: 4),
-                              Text("AI Extracted Metric", style: GoogleFonts.plusJakartaSans(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w600)),
+                              Text("AI Extracted Metric", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w600)),
                             ],
                           )
                         ],
@@ -369,7 +370,7 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
                         ),
                         child: Row(
                           children: [
-                            Text(isMissing ? "N/A" : score.toStringAsFixed(1), style: GoogleFonts.plusJakartaSans(fontSize: 20, fontWeight: FontWeight.w900, color: isMissing ? Colors.grey.shade700 : (score > 85 ? Colors.green.shade700 : (score > 65 ? Colors.orange.shade700 : Colors.red.shade700)))),
+                            Text(isMissing ? "N/A" : score.toStringAsFixed(1), style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w900, color: isMissing ? Colors.grey.shade700 : (score > 85 ? Colors.green.shade700 : (score > 65 ? Colors.orange.shade700 : Colors.red.shade700)))),
                             const SizedBox(width: 4),
                             Icon(dynamicHealthIcon, color: isMissing ? Colors.grey.shade700 : (score > 85 ? Colors.green.shade700 : (score > 65 ? Colors.orange.shade700 : Colors.red.shade700)), size: 16)
                           ],
@@ -392,7 +393,7 @@ class _ScanResultScreenState extends ConsumerState<ScanResultScreen> with Single
                         Icon(Icons.psychology_alt, color: color, size: 24),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: Text(_getInsight(title, score), style: GoogleFonts.plusJakartaSans(fontSize: 15, color: Colors.grey[800], height: 1.6, fontWeight: FontWeight.w500)),
+                          child: Text(_getInsight(title, score), style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 15, color: Colors.grey[800], height: 1.6, fontWeight: FontWeight.w500)),
                         )
                       ],
                     )

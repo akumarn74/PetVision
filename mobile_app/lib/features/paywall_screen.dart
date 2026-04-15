@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class PaywallScreen extends StatelessWidget {
   const PaywallScreen({super.key});
@@ -37,17 +36,17 @@ class PaywallScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(color: Colors.amberAccent.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
-                    child: Text("SCAN QUOTA EXCEEDED", style: GoogleFonts.plusJakartaSans(color: Colors.amberAccent, fontWeight: FontWeight.bold, letterSpacing: 1.0, fontSize: 12)),
+                    child: Text("SCAN QUOTA EXCEEDED", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.amberAccent, fontWeight: FontWeight.bold, letterSpacing: 1.0, fontSize: 12)),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     "Upgrade to\nPetVision Pro",
-                    style: GoogleFonts.plusJakartaSans(fontSize: 42, fontWeight: FontWeight.w900, color: Colors.white, height: 1.1, letterSpacing: -1.5),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 42, fontWeight: FontWeight.w900, color: Colors.white, height: 1.1, letterSpacing: -1.5),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     "You've reached your free 10-scan limit for this month. Unlock unlimited Multi-Modal AI vectors, longitudinal trends, and infinite Vet Exports.",
-                    style: GoogleFonts.plusJakartaSans(fontSize: 16, color: Colors.grey[400], height: 1.5),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 16, color: Colors.grey[400], height: 1.5),
                   ),
                   const SizedBox(height: 48),
                   
@@ -75,13 +74,13 @@ class PaywallScreen extends StatelessWidget {
                         boxShadow: [BoxShadow(color: Colors.blueAccent.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 8))],
                       ),
                       child: Center(
-                        child: Text('SUBSCRIBE - \$12.99 / MO', style: GoogleFonts.plusJakartaSans(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 0.5)),
+                        child: Text('SUBSCRIBE - \$12.99 / MO', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.black, fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 0.5)),
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
                   Center(
-                    child: Text("Restore Purchases", style: GoogleFonts.plusJakartaSans(color: Colors.grey[500], fontWeight: FontWeight.bold)),
+                    child: Text("Restore Purchases", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[500], fontWeight: FontWeight.bold)),
                   )
                 ],
               ),
@@ -101,7 +100,7 @@ class PaywallScreen extends StatelessWidget {
           child: Icon(icon, color: Colors.cyanAccent, size: 20),
         ),
         const SizedBox(width: 16),
-        Text(text, style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+        Text(text, style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
       ],
     );
   }

@@ -1,20 +1,20 @@
-import os
 import httpx
 import logging
+from typing import Dict, Any
 
-# Disable OS caching locally for live reloading during dev edits
-import importlib
-try:
-    from dotenv import load_dotenv
-    load_dotenv(override=True)
-except ImportError:
-    pass
+from openai import AsyncOpenAI
+from backend.api.config import settings
 
-LLM_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+logger = logging.getLogger(__name__)
+
+LLM_API_KEY = settings.OPENAI_API_KEY
+
+# Initialize OpenAI async client
+client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
 async def generate_personalized_push(pet_name: str, context_str: str) -> str:
     """Uses GPT-4o-mini to dynamically write a hilarious, one-sentence push notification."""
-    if not LLM_API_KEY or LLM_API_KEY.strip() == "":
+    if not settings.OPENAI_API_KEY or settings.OPENAI_API_KEY.strip() == "":
         return f"🐾 Did you feed {pet_name} yet? The AI is starving for data."
         
     system_prompt = (

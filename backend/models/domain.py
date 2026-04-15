@@ -86,10 +86,12 @@ class FoodCatalog(Base):
     fats_per_serving = Column(Float)
     serving_size_desc = Column(String) # e.g. '1 Cup', '1 Can'
 
+from pydantic import BaseModel, Field
+
 # Pydantic Schemas
 class UserRegister(BaseModel):
-    email: str
-    password: str
+    email: str = Field(pattern=r"^\S+@\S+\.\S+$")
+    password: str = Field(min_length=8)
 
 class Token(BaseModel):
     access_token: str

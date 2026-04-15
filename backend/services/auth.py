@@ -1,4 +1,3 @@
-import os
 from datetime import datetime, timedelta
 from typing import Optional
 import jwt
@@ -10,8 +9,9 @@ import bcrypt
 
 from backend.models.domain import UserAccount
 from backend.db.session import get_db
+from backend.api.config import settings
 
-SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "b4ad_s3cret_dev_only_change_in_prod")
+SECRET_KEY = settings.JWT_SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 Days
 

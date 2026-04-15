@@ -35,7 +35,13 @@ final authProvider = StateNotifierProvider<AuthNotifier, String?>((ref) => AuthN
 // API Client Provider dynamically binds to Auth Token!
 final apiClientProvider = Provider<ApiClient>((ref) {
   final token = ref.watch(authProvider);
-  return ApiClient(baseUrl: 'http://localhost:8000', authToken: token); 
+  return ApiClient(
+    baseUrl: "http://localhost:8000", 
+    authToken: token,
+    onUnauthorized: () {
+      ref.read(authProvider.notifier).logout();
+    }
+  ); 
 });
 
 final petsListProvider = FutureProvider<List<PetProfile>>((ref) async {
@@ -46,13 +52,21 @@ final petsListProvider = FutureProvider<List<PetProfile>>((ref) async {
 class ApiClient {
   final String baseUrl;
   final String? authToken;
+  final void Function()? onUnauthorized;
 
-  ApiClient({required this.baseUrl, this.authToken});
+  ApiClient({required this.baseUrl, this.authToken, this.onUnauthorized});
 
   Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        if (authToken != null) 'Authorization': 'Bearer $authToken',
+        "Content-Type": "application/json",
+        if (authToken != null) "Authorization": "Bearer $authToken",
       };
+
+  void _checkUnauthorized(http.Response response) {
+    if (response.statusCode == 401) {
+      if (onUnauthorized != null) onUnauthorized!();
+      throw Exception("Session Expired. Please log in again.");
+    }
+  }
 
   // ===============
   // AUTH ENDPOINTS
@@ -89,6 +103,7 @@ class ApiClient {
   Future<List<PetProfile>> getPets() async {
     if (authToken == null) return []; // Auto-block unauthenticated requests natively
     final response = await http.get(Uri.parse('$baseUrl/api/pets'), headers: _headers);
+    _checkUnauthorized(response);
     if (response.statusCode == 200) {
       final List data = json.decode(response.body);
       return data.map((json) => PetProfile.fromJson(json)).toList();
@@ -99,6 +114,7 @@ class ApiClient {
 
   Future<List<PetProfile>> getLeaderboard() async {
     final response = await http.get(Uri.parse('$baseUrl/api/leaderboard'), headers: _headers);
+    _checkUnauthorized(response);
     if (response.statusCode == 200) {
       final List data = json.decode(response.body);
       return data.map((json) => PetProfile.fromJson(json)).toList();
@@ -109,6 +125,7 @@ class ApiClient {
 
   Future<List<FoodCatalogItem>> searchPredefinedFoods(String query) async {
     final response = await http.get(Uri.parse('$baseUrl/api/nutrition/search?q=$query'), headers: _headers);
+    _checkUnauthorized(response);
     if (response.statusCode == 200) {
       final List data = json.decode(response.body);
       return data.map((j) => FoodCatalogItem.fromJson(j)).toList();
@@ -123,6 +140,7 @@ class ApiClient {
       headers: _headers,
       body: body,
     );
+    _checkUnauthorized(response);
     if (response.statusCode != 200) {
       throw Exception('Failed to log predefined food');
     }
@@ -133,6 +151,7 @@ class ApiClient {
       Uri.parse('$baseUrl/api/nutrition/$entryId'),
       headers: _headers,
     );
+    _checkUnauthorized(response);
     if (response.statusCode != 200) {
       throw Exception('Failed to delete diet entry');
     }
@@ -152,6 +171,7 @@ class ApiClient {
       body: body
     );
     
+    _checkUnauthorized(response);
     if (response.statusCode != 200) {
       throw Exception('Failed to create pet. ${response.body}');
     }
@@ -163,6 +183,7 @@ class ApiClient {
       headers: _headers,
       body: json.encode({"join_code": code}),
     );
+    _checkUnauthorized(response);
     if (response.statusCode != 200) {
       throw Exception(json.decode(response.body)['detail'] ?? 'Failed to join pet household');
     }
@@ -177,6 +198,7 @@ class ApiClient {
     
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
+    _checkUnauthorized(response);
     if (response.statusCode == 200) return json.decode(response.body);
     throw Exception('Failed to auto-detect pet attributes: ${response.body}');
   }
@@ -198,6 +220,7 @@ class ApiClient {
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
     
+    _checkUnauthorized(response);
     if (response.statusCode == 200) {
       return PetScanResult.fromJson(json.decode(response.body));
     } else {
@@ -207,6 +230,7 @@ class ApiClient {
 
   Future<List<PetScanResult>> getPetScans(String petId) async {
     final response = await http.get(Uri.parse('$baseUrl/api/pets/$petId/scans'), headers: _headers);
+    _checkUnauthorized(response);
     if (response.statusCode == 200) {
       final List data = json.decode(response.body);
       return data.map((json) => PetScanResult.fromJson(json)).toList();
@@ -217,18 +241,21 @@ class ApiClient {
 
   Future<Map<String, dynamic>> getTrends(String petId) async {
     final response = await http.get(Uri.parse('$baseUrl/api/scans/$petId/trends'), headers: _headers);
+    _checkUnauthorized(response);
     if (response.statusCode == 200) return json.decode(response.body);
     throw Exception('Failed to fetch trends');
   }
 
   Future<String> getVetReport(String petId) async {
     final response = await http.get(Uri.parse('$baseUrl/api/scans/$petId/vet_report'), headers: _headers);
+    _checkUnauthorized(response);
     if (response.statusCode == 200) return json.decode(response.body)['vet_report'];
     throw Exception('Failed to fetch Vet PDF summary');
   }
 
   Future<String> getDailyPush(String petId) async {
     final response = await http.get(Uri.parse('$baseUrl/api/notifications/daily/$petId'), headers: _headers);
+    _checkUnauthorized(response);
     if (response.statusCode == 200) return json.decode(response.body)['message'];
     throw Exception('Failed to fetch daily push message');
   }
@@ -236,6 +263,7 @@ class ApiClient {
   Future<int> getStreak() async {
     if (authToken == null) return 0;
     final response = await http.get(Uri.parse('$baseUrl/api/users/streak'), headers: _headers);
+    _checkUnauthorized(response);
     if (response.statusCode == 200) return json.decode(response.body)['streak'];
     return 0; // Fail silently if gamification engine drops
   }
@@ -246,6 +274,7 @@ class ApiClient {
       headers: _headers,
       body: json.encode({"raw_text": foodDescription}),
     );
+    _checkUnauthorized(response);
     if (response.statusCode != 200) {
       throw Exception('Failed to log nutrition: ${response.body}');
     }
@@ -253,6 +282,7 @@ class ApiClient {
 
   Future<Map<String, dynamic>> getDietRecommendation(String petId) async {
     final response = await http.get(Uri.parse('$baseUrl/api/nutrition/recommendation/$petId'), headers: _headers);
+    _checkUnauthorized(response);
     if (response.statusCode == 200) return json.decode(response.body);
     throw Exception('Failed to pull Cal AI tracking hook');
   }
@@ -263,6 +293,7 @@ class ApiClient {
       headers: _headers,
       body: json.encode({"activity_level": activityLevel, "diet_goal": dietGoal}),
     );
+    _checkUnauthorized(response);
     if (response.statusCode != 200) throw Exception('Failed to setup diet');
   }
 
@@ -272,6 +303,7 @@ class ApiClient {
       headers: _headers,
       body: json.encode({"image_base64": base64Image}),
     );
+    _checkUnauthorized(response);
     if (response.statusCode != 200) throw Exception('Failed to invoke Vision Nutrition Engine');
   }
 

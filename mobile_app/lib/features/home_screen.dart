@@ -21,7 +21,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  bool _hasShownPush = false;
   int _streak = 0;
 
   @override
@@ -39,98 +38,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
-  void _triggerHumorousPushNotification(PetProfile pet) {
-    if (_hasShownPush || !mounted) return;
-    _hasShownPush = true;
-
-    final tips = [
-      "I saw you eating that cheese. Tax is due.",
-      "My dataset indicates I have not been walked in 12 minutes.",
-      "Calculating optimal zoomies trajectory...",
-      "AI Analysis: Treats levels are critically low.",
-    ];
-    tips.shuffle();
-    final message = tips.first;
-
-    Future.delayed(const Duration(milliseconds: 2000), () {
-      if (!mounted) return;
-
-      final overlay = Overlay.of(context);
-      late OverlayEntry entry;
-      entry = OverlayEntry(
-          builder: (context) => Positioned(
-                top: 60, left: 16, right: 16,
-                child: Material(
-                  color: Colors.transparent,
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween(begin: -150.0, end: 0.0),
-                    duration: const Duration(milliseconds: 600),
-                    curve: Curves.easeOutBack,
-                    builder: (context, value, child) {
-                      return Transform.translate(offset: Offset(0, value), child: child);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.95),
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 30, offset: const Offset(0, 15))],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 48, height: 48,
-                                decoration: BoxDecoration(
-                                  color: Colors.black,
-                                  borderRadius: BorderRadius.circular(14)
-                                ),
-                                child: const Center(child: Text("🐾", style: TextStyle(fontSize: 24))),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text("PetVision AI", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w900, color: Colors.black)),
-                                    const SizedBox(height: 4),
-                                    Text(message, style: GoogleFonts.plusJakartaSans(color: Colors.grey.shade600, fontSize: 13, height: 1.4)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ));
-
-      overlay.insert(entry);
-      Future.delayed(const Duration(seconds: 5), () {
-        entry.remove();
-      });
-    });
-  }
-
-
   @override
   Widget build(BuildContext context) {
     final petsAsyncValue = ref.watch(petsListProvider);
 
-    petsAsyncValue.whenData((pets) {
-      if (pets.isNotEmpty && !_hasShownPush) {
-        _triggerHumorousPushNotification(pets.first);
-      }
-    });
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC), // Apple Health Minimalist Background
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -144,9 +57,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('PetVision UI', style: GoogleFonts.plusJakartaSans(fontSize: 14, color: Colors.grey.shade500, fontWeight: FontWeight.bold, letterSpacing: 2.0)),
+                      Text('PetVision AI', style: Theme.of(context).textTheme.displayLarge),
                       const SizedBox(height: 4),
-                      Text('Dashboard', style: GoogleFonts.plusJakartaSans(fontSize: 36, fontWeight: FontWeight.w900, color: Colors.black, letterSpacing: -1)),
+                      Text('Dashboard', style: Theme.of(context).textTheme.labelLarge),
                     ],
                   ),
                   Row(

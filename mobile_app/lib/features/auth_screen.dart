@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../core/api_client.dart';
 import 'home_screen.dart';
 
@@ -109,11 +108,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                child: const Icon(Icons.psychology, color: Colors.white, size: 36),
                              ),
                              const SizedBox(height: 24),
-                             Text("PetVision AI", style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                             Text("PetVision AI", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: -1)),
                              const SizedBox(height: 4),
-                             Text(isLogin ? "Welcome back." : "Create Account.", style: GoogleFonts.plusJakartaSans(fontSize: 48, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -2, height: 1.1)),
+                             Text(isLogin ? "Welcome back." : "Create Account.", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w600, color: Colors.white70)),
                              const SizedBox(height: 12),
-                             Text("Sign in to access your deeply integrated veterinary engine.", style: GoogleFonts.plusJakartaSans(color: Colors.grey[400], fontSize: 16, height: 1.4)),
+                             Text("Sign in to access your deeply integrated veterinary engine.", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[400], fontSize: 15, height: 1.4)),
                              const SizedBox(height: 32),
                           ],
                         ),
@@ -139,7 +138,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                    child: ElevatedButton.icon(
                                       style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                                       icon: const Icon(Icons.g_mobiledata, size: 32),
-                                      label: Text("Continue with Google", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 16)),
+                                      label: Text("Continue with Google", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 16)),
                                       onPressed: () { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Firebase Auth coming soon'))); }
                                    )
                                 ),
@@ -149,7 +148,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                    child: ElevatedButton.icon(
                                       style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                                       icon: const Icon(Icons.apple, size: 28),
-                                      label: Text("Continue with Apple", style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 16)),
+                                      label: Text("Continue with Apple", style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 16)),
                                       onPressed: () { ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Apple Auth coming soon'))); }
                                    )
                                 ),
@@ -158,7 +157,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                 Row(
                                   children: [
                                      Expanded(child: Container(color: Colors.white24, height: 1)),
-                                     Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text("OR EMAIL", style: GoogleFonts.plusJakartaSans(color: Colors.white54, fontWeight: FontWeight.bold, fontSize: 13))),
+                                     Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: Text("OR EMAIL", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white54, fontWeight: FontWeight.bold, fontSize: 13))),
                                      Expanded(child: Container(color: Colors.white24, height: 1)),
                                   ]
                                 ),
@@ -188,7 +187,7 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                       onPressed: isLoading ? null : submit,
                                       child: isLoading 
                                           ? const CircularProgressIndicator(color: Colors.white) 
-                                          : Text(isLogin ? 'Activate Engine' : 'Initialize Account', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.0, fontSize: 16)),
+                                          : Text(isLogin ? 'Activate Engine' : 'Initialize Account', style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.0, fontSize: 16)),
                                     ),
                                   ),
                                 ),
@@ -201,9 +200,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
                                     child: RichText(
                                        text: TextSpan(
                                           text: isLogin ? "Don't have an account? " : "Already have an account? ",
-                                          style: GoogleFonts.plusJakartaSans(color: Colors.grey.shade400, fontWeight: FontWeight.w500, fontSize: 14),
+                                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey.shade400, fontWeight: FontWeight.w500, fontSize: 14),
                                           children: [
-                                             TextSpan(text: isLogin ? "Sign up" : "Sign in", style: GoogleFonts.plusJakartaSans(color: Colors.white, fontWeight: FontWeight.bold, decoration: TextDecoration.underline))
+                                             TextSpan(text: isLogin ? "Sign up" : "Sign in", style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.bold, decoration: TextDecoration.underline))
                                           ]
                                        )
                                     )
@@ -229,12 +228,12 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white70)),
+        Text(label, style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white70)),
         const SizedBox(height: 12),
         TextField(
           controller: controller,
           obscureText: isPassword,
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 16),
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 16),
           keyboardAppearance: Brightness.dark,
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: Colors.white60, size: 20),
